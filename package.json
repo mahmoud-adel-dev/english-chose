@@ -1,0 +1,19 @@
+{
+  "name": "english-coach-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/backend",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:backend": "npm run dev --workspace=apps/backend",
+    "build:backend": "npm run build --workspace=apps/backend",
+    "test:backend": "npm test --workspace=apps/backend",
+    "db:migrate": "npm run prisma:migrate --workspace=apps/backend",
+    "db:generate": "npm run prisma:generate --workspace=apps/backend"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  }
+}

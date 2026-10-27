@@ -1,0 +1,340 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum UserRole {
+  STUDENT
+  TEACHER
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum CefrLevel {
+  A1
+  A2
+  B1
+  B2
+  C1
+  C2
+}
+
+enum QuestionType {
+  OPEN_SPEECH
+  SENTENCE_REPETITION
+  READING_ALOUD
+  PICTURE_DESCRIPTION
+  CONVERSATION_PROMPT
+  GRAMMAR_REPAIR
+}
+
+enum AiTaskType {
+  QUESTION_GENERATION
+  ANSWER_EVALUATION
+  CEFR_ASSESSMENT
+  EDUCATIONAL_EXPLANATION
+  PROGRESS_SUMMARY
+  SPEECH_TO_TEXT
+  TEXT_TO_SPEECH
+  PRONUNCIATION_ASSESSMENT
+}
+
+enum ProviderStatus {
+  ACTIVE
+  INACTIVE
+  DEGRADED
+  SUSPENDED
+}
+
+// -------------------------------------------------------------
+// USER & LEARNING PROFILE
+// -------------------------------------------------------------
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         UserRole @default(STUDENT)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  profile     LearningProfile?
+  assessments CefrAssessment[]
+  sessions    DailySession[]
+  quotaUsage  UserQuotaUsage[]
+  auditLogs   AuditLog[]
+
+  @@index([email])
+  @@index([role])
+}
+
+model LearningProfile {
+  id                  String    @id @default(uuid())
+  userId              String    @unique
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currentLevel        CefrLevel @default(A1)
+  targetLevel         CefrLevel @default(B2)
+  overallScore        Float     @default(0.0)
+  vocabularyScore     Float     @default(0.0)
+  grammarScore        Float     @default(0.0)
+  fluencyScore        Float     @default(0.0)
+  pronunciationScore  Float     @default(0.0)
+  dailyStreak         Int       @default(0)
+  lastTrainedDate     DateTime?
+  recurringWeaknesses Json      @default("[]")
+  customPreferences   Json      @default("{}")
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+}
+
+// -------------------------------------------------------------
+// CEFR PLACEMENT & ASSESSMENT
+// -------------------------------------------------------------
+
+model CefrAssessment {
+  id              String     @id @default(uuid())
+  userId          String
+  user            User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assessedLevel   CefrLevel?
+  status          String     @default("IN_PROGRESS") // IN_PROGRESS, COMPLETED, ABANDONED
+  totalQuestions  Int        @default(6)
+  currentQuestion Int        @default(1)
+  overallFeedback String?    @db.Text
+  startedAt       DateTime   @default(now())
+  completedAt     DateTime?
+
+  items AssessmentItem[]
+
+  @@index([userId, status])
+}
+
+model AssessmentItem {
+  id              String         @id @default(uuid())
+  assessmentId    String
+  assessment      CefrAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  targetLevel     CefrLevel
+  promptText      String         @db.Text
+  audioPromptUrl  String?
+  learnerAudioUrl String?
+  transcript      String?        @db.Text
+  evalScore       Float?
+  feedbackJson    Json?
+  createdAt       DateTime       @default(now())
+
+  @@index([assessmentId])
+}
+
+// -------------------------------------------------------------
+// DAILY ADAPTIVE TRAINING & QUESTIONS
+// -------------------------------------------------------------
+
+model DailySession {
+  id             String    @id @default(uuid())
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionDate    DateTime  @default(now())
+  targetLevel    CefrLevel
+  status         String    @default("ACTIVE") // ACTIVE, COMPLETED, EXPIRED
+  questionsCount Int       @default(5)
+  durationSec    Int       @default(0)
+  summaryText    String?   @db.Text
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  questions SessionQuestion[]
+
+  @@index([userId, sessionDate])
+}
+
+model SessionQuestion {
+  id              String       @id @default(uuid())
+  sessionId       String
+  session         DailySession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  orderIndex      Int
+  questionType    QuestionType
+  promptText      String       @db.Text
+  audioPromptUrl  String?
+  pedagogicalGoal String
+  contextHint     String?
+  difficultyScore Float        @default(1.0)
+  createdAt       DateTime     @default(now())
+
+  submissions QuestionSubmission[]
+
+  @@index([sessionId, orderIndex])
+}
+
+model QuestionSubmission {
+  id                  String          @id @default(uuid())
+  questionId          String
+  question            SessionQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  attemptNumber       Int             @default(1)
+  audioUrl            String?
+  rawTranscript       String?         @db.Text
+  correctedText       String?         @db.Text
+  isMeaningAccurate   Boolean         @default(false)
+  grammarScore        Float           @default(0.0)
+  vocabularyScore     Float           @default(0.0)
+  overallScore        Float           @default(0.0)
+  explanationMarkdown String          @db.Text
+  identifiedErrors    Json            @default("[]")
+  retryEligible       Boolean         @default(true)
+  createdAt           DateTime        @default(now())
+
+  @@index([questionId, attemptNumber])
+}
+
+// -------------------------------------------------------------
+// AI PROVIDERS, MODELS & DYNAMIC TASK ROUTING
+// -------------------------------------------------------------
+
+model AiProvider {
+  id                    String         @id @default(uuid())
+  identifier            String         @unique // e.g. "google-gemini", "openai"
+  name                  String
+  baseUrl               String?
+  apiKeySecretKey       String // Reference key in environment
+  credentialSource      String         @default("ENV_REFERENCE")
+  inferenceCredential   Json?
+  managementCredential  Json?
+  inferenceKeyLastFour  String?
+  managementKeyLastFour String?
+  credentialHealth      String         @default("UNTESTED")
+  credentialReason      String?        @db.Text
+  providerErrorCode     String?
+  lastTestedAt          DateTime?
+  lastTestLatencyMs     Int?
+  quotaSnapshot         Json?
+  quotaRefreshedAt      DateTime?
+  discoverySnapshot     Json?
+  modelsDiscoveredAt    DateTime?
+  status                ProviderStatus @default(ACTIVE)
+  priorityOrder         Int            @default(100)
+  maxRpm                Int            @default(60)
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+
+  models    AiModel[]
+  usageLogs AiUsageLog[]
+
+  @@index([identifier, status])
+}
+
+model AiModel {
+  id               String     @id @default(uuid())
+  providerId       String
+  provider         AiProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  modelIdentifier  String // e.g. "gemini-2.0-flash", "gpt-4o"
+  displayName      String
+  contextWindow    Int        @default(128000)
+  supportsVision   Boolean    @default(false)
+  supportsAudioIn  Boolean    @default(false)
+  supportsAudioOut Boolean    @default(false)
+  supportsJsonMode Boolean    @default(true)
+  costPerInput1k   Decimal    @default(0.0015) @db.Decimal(10, 6)
+  costPerOutput1k  Decimal    @default(0.0060) @db.Decimal(10, 6)
+  costPerMinute    Decimal?   @db.Decimal(10, 6)
+  isActive         Boolean    @default(true)
+  isAvailable      Boolean    @default(true)
+  pricingSource    String     @default("MANUAL")
+  sourceMetadata   Json?
+  discoveredAt     DateTime?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  primaryRoutings  AiTaskRouting[] @relation("PrimaryModel")
+  fallbackRoutings AiTaskRouting[] @relation("FallbackModel")
+  usageLogs        AiUsageLog[]
+
+  @@unique([providerId, modelIdentifier])
+  @@index([modelIdentifier, isActive])
+}
+
+model AiTaskRouting {
+  id              String     @id @default(uuid())
+  taskType        AiTaskType @unique
+  primaryModelId  String
+  primaryModel    AiModel    @relation("PrimaryModel", fields: [primaryModelId], references: [id])
+  fallbackModelId String?
+  fallbackModel   AiModel?   @relation("FallbackModel", fields: [fallbackModelId], references: [id])
+  systemPromptTpl String?    @db.Text
+  temperature     Float      @default(0.3)
+  maxTokens       Int        @default(2048)
+  timeoutMs       Int        @default(15000)
+  maxRetries      Int        @default(2)
+  updatedAt       DateTime   @updatedAt
+}
+
+model AiUsageLog {
+  id               String     @id @default(uuid())
+  userId           String?
+  taskId           AiTaskType
+  providerId       String
+  provider         AiProvider @relation(fields: [providerId], references: [id])
+  modelId          String
+  model            AiModel    @relation(fields: [modelId], references: [id])
+  promptTokens     Int        @default(0)
+  completionTokens Int        @default(0)
+  audioDurationSec Float      @default(0.0)
+  durationMs       Int        @default(0)
+  estimatedCostUsd Decimal    @default(0.0) @db.Decimal(10, 6)
+  actualCostUsd    Decimal?   @db.Decimal(10, 6)
+  statusCode       Int        @default(200)
+  isFallbackUsed   Boolean    @default(false)
+  errorMessage     String?    @db.Text
+  createdAt        DateTime   @default(now())
+
+  @@index([userId, taskId, createdAt])
+  @@index([providerId, modelId])
+}
+
+// -------------------------------------------------------------
+// QUOTAS & GOVERNANCE
+// -------------------------------------------------------------
+
+model QuotaTier {
+  id                 String           @id @default(uuid())
+  name               String           @unique // "FREE", "STANDARD", "PREMIUM"
+  maxDailyQuestions  Int              @default(15)
+  maxDailySessions   Int              @default(2)
+  maxAudioMinutesDay Float            @default(10.0)
+  maxAttemptsPerItem Int              @default(3)
+  requestsPerMinute  Int              @default(20)
+  userQuotaUsages    UserQuotaUsage[]
+}
+
+model UserQuotaUsage {
+  id                String    @id @default(uuid())
+  userId            String
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tierId            String
+  tier              QuotaTier @relation(fields: [tierId], references: [id])
+  date              DateTime  @db.Date
+  questionsAnswered Int       @default(0)
+  sessionsCount     Int       @default(0)
+  audioMinutesUsed  Float     @default(0.0)
+  requestCount      Int       @default(0)
+  updatedAt         DateTime  @updatedAt
+
+  @@unique([userId, date])
+  @@index([userId, date])
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+  action      String
+  resource    String
+  detailsJson Json
+  ipAddress   String?
+  createdAt   DateTime @default(now())
+
+  @@index([action, createdAt])
+}
