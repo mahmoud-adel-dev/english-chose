@@ -18,17 +18,43 @@ const MIN_WORDS: Record<CefrLevel, number> = {
   C2: 12,
 };
 
-const ASSESSMENT_PROMPTS: Record<CefrLevel, string> = {
-  A1: "Describe your family and where you live in 2-3 sentences.",
-  A2: "What did you do last weekend? Describe your activities in complete sentences.",
-  B1: "Why is learning English important for your future career or travel?",
-  B2: "Do you think artificial intelligence will replace some human jobs? Explain your opinion.",
-  C1: "Analyze how remote work affects cities, productivity, and mental health.",
-  C2: "Discuss the tension between technological determinism and the social shaping of technology.",
+const ASSESSMENT_PROMPTS: Record<CefrLevel, string[]> = {
+  A1: [
+    "Describe your family and where you live in 2-3 sentences.",
+    "Introduce yourself, your daily routine, and what time you wake up.",
+    "Describe your room or home and three objects you have in it.",
+  ],
+  A2: [
+    "What did you do last weekend? Describe your activities in complete sentences.",
+    "Talk about your favorite holiday or celebration and what you did there.",
+    "Describe a trip you took in the past and what you enjoyed the most.",
+  ],
+  B1: [
+    "Why is learning English important for your future career or travel?",
+    "How does speaking English help you connect with people and opportunities?",
+    "Describe a challenging problem you solved at work or during your studies.",
+  ],
+  B2: [
+    "Do you think artificial intelligence will replace some human jobs? Explain your opinion.",
+    "Should university education be completely free for all citizens? Give your arguments.",
+    "Discuss the advantages and disadvantages of living in a major city versus a rural town.",
+  ],
+  C1: [
+    "Analyze how remote work affects cities, productivity, and mental health.",
+    "To what extent should governments regulate social media platforms to combat misinformation?",
+    "Evaluate the economic and ethical implications of widespread automation in contemporary industries.",
+  ],
+  C2: [
+    "Discuss the tension between technological determinism and the social shaping of technology.",
+    "Critique the philosophical dilemma between individual autonomy and collective societal welfare.",
+    "Assess the extent to which economic globalization homogenizes indigenous cultural identities.",
+  ],
 };
 
 export function assessmentPromptForLevel(level: CefrLevel) {
-  return { level, text: ASSESSMENT_PROMPTS[level] };
+  const prompts = ASSESSMENT_PROMPTS[level] || ASSESSMENT_PROMPTS["B1"];
+  const randomIndex = Math.floor(Math.random() * prompts.length);
+  return { level, text: prompts[randomIndex] };
 }
 
 export function validateEnglishAnswer(

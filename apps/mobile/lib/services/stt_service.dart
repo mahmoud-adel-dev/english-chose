@@ -79,6 +79,7 @@ class SttService {
           listenMode: stt.ListenMode.dictation,
           cancelOnError: false,
           partialResults: true,
+          localeId: 'en_US',
         ),
       );
 

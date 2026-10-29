@@ -267,7 +267,7 @@ class HomeScreen extends StatelessWidget {
                         physics: const NeverScrollableScrollPhysics(),
                         crossAxisSpacing: 12,
                         mainAxisSpacing: 12,
-                        childAspectRatio: isWide ? 1.25 : (isMedium ? 1.2 : 1.25),
+                        childAspectRatio: isWide ? 1.3 : (isMedium ? 1.25 : 1.15),
                         children: [
                           ScoreCard(
                             title: 'Overall Score',

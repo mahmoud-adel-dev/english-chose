@@ -6,6 +6,7 @@ import {
   SttTranscriptionResponse,
   ProviderConnectionTestResult,
 } from "../types";
+import { getQuestionsForCefrLevel } from "../../learning/question-bank";
 
 export class MockAiProviderAdapter implements IAiProviderAdapter {
   readonly providerId = "mock-provider";
@@ -53,15 +54,10 @@ export class MockAiProviderAdapter implements IAiProviderAdapter {
       };
     }
 
-    // Default question generation mock
-    const questionResult = {
-      orderIndex: 1,
-      questionType: "CONVERSATION_PROMPT",
-      promptText: "Describe what you usually do on your favorite day of the week.",
-      pedagogicalGoal: "Practice present simple frequency adverbs and daily routine vocabulary",
-      contextHint: "Mention words like 'always', 'usually', 'sometimes'.",
-      difficultyScore: 1.2,
-    };
+    // Default question generation mock - returns 5 tailored questions according to CEFR level
+    const cefrMatch = (req.systemPrompt + " " + req.userPrompt).match(/\b(A1|A2|B1|B2|C1|C2)\b/i);
+    const detectedLevel = cefrMatch ? cefrMatch[1].toUpperCase() : "A2";
+    const questionResult = getQuestionsForCefrLevel(detectedLevel, 5);
 
     return {
       content: JSON.stringify(questionResult),

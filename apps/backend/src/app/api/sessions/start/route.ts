@@ -4,6 +4,7 @@ import { AiTaskRouter } from "@/lib/ai/task-router";
 import { AiTaskType, QuestionType } from "@prisma/client";
 import { authenticateRequest, successResponse, errorResponse } from "../../_helpers";
 import { DailySessionDto, SessionQuestionDto } from "@english-coach/contracts";
+import { getQuestionsForCefrLevel } from "@/lib/learning/question-bank";
 
 export async function POST(request: Request) {
   let userId = "";
@@ -65,45 +66,9 @@ Return ONLY a valid JSON array containing 5 objects with keys:
       console.warn("AI Question generation fallback triggered:", aiErr);
     }
 
-    // Fallback default questions if AI returns fewer than 5
+    // Fallback default questions tailored specifically to the user's CEFR level
     if (!questionsData || questionsData.length < 5) {
-      questionsData = [
-        {
-          questionType: QuestionType.CONVERSATION_PROMPT,
-          promptText: "Introduce yourself and describe your favorite hobby in 2-3 sentences.",
-          pedagogicalGoal: "Present simple tense and basic self-expression",
-          contextHint: "Use words like 'I enjoy', 'usually', and 'because'.",
-          difficultyScore: 1.2,
-        },
-        {
-          questionType: QuestionType.SENTENCE_REPETITION,
-          promptText: "Although it was raining outside, we decided to go for a long walk in the park.",
-          pedagogicalGoal: "Subordinating conjunctions and complex sentence rhythm",
-          contextHint: "Pay attention to the pause after 'outside'.",
-          difficultyScore: 2.0,
-        },
-        {
-          questionType: QuestionType.GRAMMAR_REPAIR,
-          promptText: "Fix the error in this sentence: 'She don't like drinking coffee in the morning.'",
-          pedagogicalGoal: "Subject-verb agreement for third person singular",
-          contextHint: "Think about 'does' vs 'do'.",
-          difficultyScore: 1.5,
-        },
-        {
-          questionType: QuestionType.READING_ALOUD,
-          promptText: "Clear communication is essential when collaborating on global projects with international teams.",
-          pedagogicalGoal: "Pronunciation and intonation of multi-syllable professional vocabulary",
-          contextHint: "Emphasize 'essential' and 'collaborating'.",
-          difficultyScore: 2.5,
-        },
-        {
-          questionType: QuestionType.OPEN_SPEECH,
-          promptText: "What are your goals for improving your English this month?",
-          pedagogicalGoal: "Expressing future intentions and personal plans",
-          contextHint: "Try using 'I aim to...', 'I want to improve...', or 'I plan on...'",
-          difficultyScore: 2.8,
-        },
-      ];
+      questionsData = getQuestionsForCefrLevel(targetLevel, 5);
     }
 
     // 4. Create Session in DB
