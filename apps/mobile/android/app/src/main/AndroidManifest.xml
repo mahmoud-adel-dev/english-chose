@@ -8,9 +8,10 @@
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
 
     <application
-        android:label="mobile"
+        android:label="English Coach"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round">
         <activity
             android:name=".MainActivity"
             android:exported="true"
