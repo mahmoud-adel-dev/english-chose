@@ -65,7 +65,7 @@ class _AssessmentScreenState extends State<AssessmentScreen> {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: AppTheme.accentColor.withOpacity(0.1),
+                color: AppTheme.accentColor.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: const Icon(
@@ -245,7 +245,7 @@ class _AssessmentScreenState extends State<AssessmentScreen> {
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: AppTheme.getLevelColor(result.assessedLevel).withOpacity(0.12),
+                color: AppTheme.getLevelColor(result.assessedLevel).withValues(alpha: 0.12),
                 shape: BoxShape.circle,
               ),
               child: Text(

@@ -37,7 +37,7 @@ class ProfileScreen extends StatelessWidget {
                       children: [
                         CircleAvatar(
                           radius: 36,
-                          backgroundColor: AppTheme.primaryColor.withOpacity(0.12),
+                          backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.12),
                           child: Text(
                             user.name.isNotEmpty ? user.name[0].toUpperCase() : 'U',
                             style: const TextStyle(

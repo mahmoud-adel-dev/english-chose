@@ -68,7 +68,7 @@ class _AuthScreenState extends State<AuthScreen> {
                         child: Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: AppTheme.primaryColor.withOpacity(0.1),
+                            color: AppTheme.primaryColor.withValues(alpha: 0.1),
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(
@@ -120,7 +120,7 @@ class _AuthScreenState extends State<AuthScreen> {
                                     boxShadow: isLogin
                                         ? [
                                             BoxShadow(
-                                              color: Colors.black.withOpacity(0.05),
+                                              color: Colors.black.withValues(alpha: 0.05),
                                               blurRadius: 4,
                                               offset: const Offset(0, 2),
                                             ),
@@ -149,7 +149,7 @@ class _AuthScreenState extends State<AuthScreen> {
                                     boxShadow: !isLogin
                                         ? [
                                             BoxShadow(
-                                              color: Colors.black.withOpacity(0.05),
+                                              color: Colors.black.withValues(alpha: 0.05),
                                               blurRadius: 4,
                                               offset: const Offset(0, 2),
                                             ),
@@ -177,9 +177,9 @@ class _AuthScreenState extends State<AuthScreen> {
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: AppTheme.errorColor.withOpacity(0.1),
+                            color: AppTheme.errorColor.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: AppTheme.errorColor.withOpacity(0.3)),
+                            border: Border.all(color: AppTheme.errorColor.withValues(alpha: 0.3)),
                           ),
                           child: Row(
                             children: [

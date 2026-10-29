@@ -29,7 +29,7 @@ class ScoreCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: activeColor.withOpacity(0.1),
+                    color: activeColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(icon, color: activeColor, size: 20),
