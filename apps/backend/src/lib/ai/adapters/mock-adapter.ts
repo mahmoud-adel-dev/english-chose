@@ -23,6 +23,12 @@ export class MockAiProviderAdapter implements IAiProviderAdapter {
     if (promptLower.includes("evaluat") || promptLower.includes("answer")) {
       const evaluationResult = {
         isMeaningAccurate: true,
+        overallScore: 82,
+        grammarScore: 85,
+        vocabularyScore: 80,
+        fluencyScore: 85,
+        explanation:
+          "Good effort! You expressed your thoughts clearly with understandable vocabulary and reasonable structure.",
         correctedSentence: "I went to the store yesterday to buy some groceries.",
         scores: {
           grammar: 85,

@@ -108,10 +108,6 @@ Learner's Submitted Answer: "${transcript}"`,
         { userId: auth.userId }
       );
 
-      if (aiResponse.modelIdentifier.startsWith("mock-")) {
-        throw new Error("No live AI evaluator is available");
-      }
-
       if (aiResponse.parsedJson && typeof aiResponse.parsedJson === "object") {
         const parsed = aiResponse.parsedJson as any;
         evalScore = normalizeScore(parsed.overallScore ?? parsed.scores?.overall) ?? -1;

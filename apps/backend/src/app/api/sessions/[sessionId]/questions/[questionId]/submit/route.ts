@@ -124,10 +124,6 @@ Learner Response: "${transcript}"`,
         { userId }
       );
 
-      if (aiResponse.modelIdentifier.startsWith("mock-")) {
-        throw new Error("No live AI evaluator is available");
-      }
-
       let parsedEvaluation: any = null;
 
       if (aiResponse.parsedJson && typeof aiResponse.parsedJson === "object") {

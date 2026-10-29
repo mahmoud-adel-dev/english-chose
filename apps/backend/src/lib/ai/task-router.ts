@@ -214,15 +214,18 @@ export class AiTaskRouter {
     // 4. Built-in Server Environment Gemini Fallback
     const envGeminiKey = process.env.GEMINI_API_KEY;
     if (envGeminiKey) {
-      try {
-        const geminiAdapter = new GeminiAiProviderAdapter(envGeminiKey);
-        const res = await this.executeWithTimeout(
-          () => geminiAdapter.generateCompletion("gemini-3.8-flash", mergedReq),
-          timeoutMs
-        );
-        return res;
-      } catch (geminiErr) {
-        console.warn("[AiTaskRouter] Server environment Gemini fallback encountered error:", geminiErr);
+      const workingModels = ["gemini-3.6-flash", "gemini-3.5-flash"];
+      const geminiAdapter = new GeminiAiProviderAdapter(envGeminiKey);
+      for (const modelId of workingModels) {
+        try {
+          const res = await this.executeWithTimeout(
+            () => geminiAdapter.generateCompletion(modelId, mergedReq),
+            timeoutMs
+          );
+          return res;
+        } catch (geminiErr) {
+          console.warn(`[AiTaskRouter] Server environment Gemini fallback (${modelId}) encountered error:`, geminiErr);
+        }
       }
     }
 
@@ -268,7 +271,7 @@ export class AiTaskRouter {
     if (envGeminiKey) {
       try {
         const geminiAdapter = new GeminiAiProviderAdapter(envGeminiKey);
-        return await geminiAdapter.transcribeAudio("gemini-3.8-flash", req);
+        return await geminiAdapter.transcribeAudio("gemini-3.6-flash", req);
       } catch (e) {
         console.warn("[AiTaskRouter] Gemini audio transcription fallback encountered error:", e);
       }

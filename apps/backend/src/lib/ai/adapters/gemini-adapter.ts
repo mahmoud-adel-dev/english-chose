@@ -113,7 +113,7 @@ export class GeminiAiProviderAdapter implements IAiProviderAdapter {
     const startTime = Date.now();
     try {
       const ai = this.getClient();
-      const model = ai.getGenerativeModel({ model: "gemini-3.8-flash" });
+      const model = ai.getGenerativeModel({ model: "gemini-3.6-flash" });
       const result = await model.generateContent("Respond with 'OK'");
       const text = result.response.text();
       return {
