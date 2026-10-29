@@ -70,9 +70,27 @@ model User {
   sessions    DailySession[]
   quotaUsage  UserQuotaUsage[]
   auditLogs   AuditLog[]
+  savedWords  SavedWord[]
 
   @@index([email])
   @@index([role])
+}
+
+model SavedWord {
+  id              String    @id @default(uuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  word            String
+  translation     String
+  exampleSentence String?   @db.Text
+  level           CefrLevel?
+  reviewCount     Int       @default(0)
+  nextReviewAt    DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([userId, word])
+  @@index([userId, createdAt])
 }
 
 model LearningProfile {

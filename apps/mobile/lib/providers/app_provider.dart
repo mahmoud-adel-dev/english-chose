@@ -14,6 +14,8 @@ class AppProvider with ChangeNotifier {
   AssessmentItemModel? _currentAssessmentItem;
   AssessmentResultModel? _lastAssessmentResult;
   Map<String, dynamic>? _quota;
+  List<Map<String, dynamic>> _savedWords = [];
+  String? _learningSupportContent;
 
   // Admin states
   Map<String, dynamic>? _adminAnalytics;
@@ -34,6 +36,8 @@ class AppProvider with ChangeNotifier {
   AssessmentItemModel? get currentAssessmentItem => _currentAssessmentItem;
   AssessmentResultModel? get lastAssessmentResult => _lastAssessmentResult;
   Map<String, dynamic>? get quota => _quota;
+  List<Map<String, dynamic>> get savedWords => _savedWords;
+  String? get learningSupportContent => _learningSupportContent;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   bool get isAuthenticated => _user != null;
@@ -50,6 +54,11 @@ class AppProvider with ChangeNotifier {
 
   void clearError() {
     _errorMessage = null;
+    notifyListeners();
+  }
+
+  void clearLearningSupport() {
+    _learningSupportContent = null;
     notifyListeners();
   }
 
@@ -226,6 +235,79 @@ class AppProvider with ChangeNotifier {
     } catch (e) {
       _errorMessage = e.toString();
       _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> requestLearningSupport({
+    required String action,
+    required String question,
+    required String level,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    _learningSupportContent = null;
+    notifyListeners();
+    try {
+      final data = await ApiService.post(ApiConfig.learningSupport, body: {
+        'action': action,
+        'question': question,
+        'level': level,
+      });
+      _learningSupportContent = data['content'] as String?;
+      _isLoading = false;
+      notifyListeners();
+      return _learningSupportContent != null;
+    } catch (e) {
+      _errorMessage = e.toString();
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<void> fetchSavedWords() async {
+    try {
+      final data = await ApiService.get(ApiConfig.vocabulary) as List<dynamic>;
+      _savedWords = data.map((item) => Map<String, dynamic>.from(item as Map)).toList();
+      notifyListeners();
+    } catch (e) {
+      _errorMessage = e.toString();
+      notifyListeners();
+    }
+  }
+
+  Future<bool> saveWord({
+    required String word,
+    required String translation,
+    String? exampleSentence,
+    String? level,
+  }) async {
+    try {
+      await ApiService.post(ApiConfig.vocabulary, body: {
+        'word': word,
+        'translation': translation,
+        'exampleSentence': exampleSentence,
+        'level': level,
+      });
+      await fetchSavedWords();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> deleteSavedWord(String id) async {
+    try {
+      await ApiService.delete(ApiConfig.vocabularyItem(id));
+      _savedWords.removeWhere((item) => item['id'] == id);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
       notifyListeners();
       return false;
     }

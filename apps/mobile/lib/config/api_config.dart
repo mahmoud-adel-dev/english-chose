@@ -30,6 +30,11 @@ class ApiConfig {
   // Speech & Audio Processing
   static const String speechTranscribe = '$baseUrl/speech/transcribe';
 
+  // Learning support & saved vocabulary
+  static const String learningSupport = '$baseUrl/learning-support';
+  static const String vocabulary = '$baseUrl/vocabulary';
+  static String vocabularyItem(String id) => '$vocabulary/$id';
+
   // Admin & Governance Endpoints
   static const String adminAnalytics = '$baseUrl/admin/analytics';
   static const String adminProviders = '$baseUrl/admin/providers';

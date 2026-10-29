@@ -7,6 +7,7 @@ import 'screens/home_screen.dart';
 import 'screens/session_screen.dart';
 import 'screens/assessment_screen.dart';
 import 'screens/profile_screen.dart';
+import 'screens/saved_words_screen.dart';
 import 'screens/admin/admin_dashboard_screen.dart';
 
 void main() {
@@ -129,12 +130,13 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> {
         onOpenAdmin: isAdmin
             ? () {
                 setState(() {
-                  _currentIndex = 3;
+                  _currentIndex = 4;
                 });
               }
             : null,
       ),
       const SessionScreen(),
+      const SavedWordsScreen(),
       const ProfileScreen(),
       if (isAdmin) const AdminDashboardScreen(),
     ];
@@ -177,6 +179,11 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> {
               icon: Icon(Icons.psychology_outlined),
               activeIcon: Icon(Icons.psychology_rounded),
               label: 'Practice',
+            ),
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.bookmark_border_rounded),
+              activeIcon: Icon(Icons.bookmark_rounded),
+              label: 'My Words',
             ),
             const BottomNavigationBarItem(
               icon: Icon(Icons.person_outline_rounded),

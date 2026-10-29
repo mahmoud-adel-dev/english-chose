@@ -75,12 +75,11 @@ class SttService {
       await _speech.listen(
         onResult: _onSpeechResult,
         onSoundLevelChange: _onSoundLevelChange,
-        localeId: 'en_US',
-        listenMode: stt.ListenMode.dictation,
-        cancelOnError: false,
-        partialResults: true,
-        listenFor: const Duration(seconds: 60), // Max 60 seconds
-        pauseFor: const Duration(seconds: 3), // Auto-stop after 3s silence
+        listenOptions: stt.SpeechListenOptions(
+          listenMode: stt.ListenMode.dictation,
+          cancelOnError: false,
+          partialResults: true,
+        ),
       );
 
       _isListening = true;

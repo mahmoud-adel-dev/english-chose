@@ -27,6 +27,7 @@ class _SessionScreenState extends State<SessionScreen>
   double _soundLevel = 0.0;
   bool _showTextInput = false; // Toggle between mic and keyboard
   bool _autoPlayTts = true;
+  String? _activeSupportAction; // 'TRANSLATE' | 'EXPLAIN' | 'MODEL_ANSWER'
 
   late AnimationController _micPulseController;
   late AnimationController _speakerPulseController;
@@ -279,8 +280,8 @@ class _SessionScreenState extends State<SessionScreen>
         ),
         const SizedBox(height: 24),
 
-        // Question Card with Audio
-        _buildQuestionCard(question),
+        // Question Card with Audio & Learning Support
+        _buildQuestionCard(question, session, provider),
         const SizedBox(height: 20),
 
         // Audio Input Section
@@ -295,7 +296,8 @@ class _SessionScreenState extends State<SessionScreen>
     );
   }
 
-  Widget _buildQuestionCard(SessionQuestionModel question) {
+  Widget _buildQuestionCard(
+      SessionQuestionModel question, DailySessionModel session, AppProvider provider) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -441,9 +443,265 @@ class _SessionScreenState extends State<SessionScreen>
                 ),
               ],
             ),
+
+            // On-demand Learning Support (Translate, Explain, Model Answer)
+            _buildLearningSupportSection(provider, session, question),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildLearningSupportSection(
+      AppProvider provider, DailySessionModel session, SessionQuestionModel question) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 16),
+        const Divider(height: 1, color: Color(0xFFE2E8F0)),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            const Icon(Icons.school_rounded, size: 16, color: AppTheme.primaryColor),
+            const SizedBox(width: 6),
+            const Text(
+              'Learning Support:',
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
+                color: Color(0xFF64748B),
+              ),
+            ),
+            const Spacer(),
+            if (provider.learningSupportContent != null)
+              GestureDetector(
+                onTap: () {
+                  setState(() => _activeSupportAction = null);
+                  provider.clearLearningSupport();
+                },
+                child: const Row(
+                  children: [
+                    Icon(Icons.close_rounded, size: 14, color: Color(0xFF94A3B8)),
+                    SizedBox(width: 2),
+                    Text(
+                      'Dismiss',
+                      style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            _buildSupportChip(
+              action: 'TRANSLATE',
+              label: 'Translate',
+              icon: Icons.g_translate_rounded,
+              provider: provider,
+              session: session,
+              question: question,
+            ),
+            _buildSupportChip(
+              action: 'EXPLAIN',
+              label: 'Explain',
+              icon: Icons.psychology_outlined,
+              provider: provider,
+              session: session,
+              question: question,
+            ),
+            _buildSupportChip(
+              action: 'MODEL_ANSWER',
+              label: 'Model Answer',
+              icon: Icons.lightbulb_outline_rounded,
+              provider: provider,
+              session: session,
+              question: question,
+            ),
+          ],
+        ),
+        if (provider.isLoading && _activeSupportAction != null) ...[
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: Row(
+              children: [
+                const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  _activeSupportAction == 'TRANSLATE'
+                      ? 'Translating question...'
+                      : (_activeSupportAction == 'EXPLAIN'
+                          ? 'Generating explanation...'
+                          : 'Writing model answer...'),
+                  style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                ),
+              ],
+            ),
+          ),
+        ] else if (provider.learningSupportContent != null && _activeSupportAction != null) ...[
+          const SizedBox(height: 12),
+          _buildSupportContentCard(provider, _activeSupportAction!),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildSupportContentCard(AppProvider provider, String action) {
+    final isModelAnswer = action == 'MODEL_ANSWER';
+    final isTranslate = action == 'TRANSLATE';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isModelAnswer
+            ? const Color(0xFFFFFBEB)
+            : const Color(0xFFF0FDF4),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: isModelAnswer
+              ? const Color(0xFFFDE68A)
+              : const Color(0xFFBBF7D0),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                isModelAnswer
+                    ? Icons.menu_book_rounded
+                    : (isTranslate ? Icons.translate_rounded : Icons.psychology_rounded),
+                size: 16,
+                color: isModelAnswer
+                    ? const Color(0xFFB45309)
+                    : const Color(0xFF15803D),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                isModelAnswer
+                    ? 'Model Answer (For Reference Only)'
+                    : (isTranslate ? 'Arabic Translation' : 'Teacher Explanation'),
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                  color: isModelAnswer
+                      ? const Color(0xFF92400E)
+                      : const Color(0xFF166534),
+                ),
+              ),
+              const Spacer(),
+              if (isModelAnswer)
+                IconButton(
+                  tooltip: 'Listen to model answer',
+                  icon: const Icon(Icons.volume_up_rounded, size: 18),
+                  color: const Color(0xFFB45309),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onPressed: () {
+                    _tts.speak(provider.learningSupportContent!);
+                  },
+                ),
+            ],
+          ),
+          if (isModelAnswer) ...[
+            const SizedBox(height: 4),
+            const Text(
+              '⚠️ Study this example, then craft and speak your own answer below.',
+              style: TextStyle(
+                fontSize: 11,
+                fontStyle: FontStyle.italic,
+                color: Color(0xFFB45309),
+              ),
+            ),
+          ],
+          const SizedBox(height: 8),
+          Text(
+            provider.learningSupportContent!,
+            textDirection: isTranslate ? TextDirection.rtl : TextDirection.ltr,
+            style: TextStyle(
+              fontSize: 13,
+              height: 1.4,
+              color: isModelAnswer
+                  ? const Color(0xFF78350F)
+                  : const Color(0xFF14532D),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSupportChip({
+    required String action,
+    required String label,
+    required IconData icon,
+    required AppProvider provider,
+    required DailySessionModel session,
+    required SessionQuestionModel question,
+  }) {
+    final isSelected = _activeSupportAction == action && provider.learningSupportContent != null;
+    return ActionChip(
+      avatar: Icon(
+        icon,
+        size: 14,
+        color: isSelected ? Colors.white : AppTheme.primaryColor,
+      ),
+      label: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: isSelected ? Colors.white : const Color(0xFF334155),
+        ),
+      ),
+      backgroundColor: isSelected ? AppTheme.primaryColor : const Color(0xFFF1F5F9),
+      side: BorderSide(
+        color: isSelected
+            ? AppTheme.primaryColor
+            : const Color(0xFFCBD5E1),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      onPressed: provider.isLoading
+          ? null
+          : () async {
+              if (isSelected) {
+                setState(() => _activeSupportAction = null);
+                provider.clearLearningSupport();
+                return;
+              }
+              setState(() => _activeSupportAction = action);
+              final success = await provider.requestLearningSupport(
+                action: action,
+                question: question.promptText,
+                level: session.targetLevel,
+              );
+              if (!success && mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      provider.errorMessage ?? 'Learning support is currently unavailable.',
+                    ),
+                    backgroundColor: AppTheme.errorColor,
+                  ),
+                );
+              }
+            },
     );
   }
 
@@ -1067,10 +1325,13 @@ class _SessionScreenState extends State<SessionScreen>
               child: ElevatedButton.icon(
                 onPressed: () {
                   _tts.stop();
+                  provider.clearLearningSupport();
                   if (isLast) {
+                    setState(() => _activeSupportAction = null);
                     provider.fetchCurrentSession();
                   } else {
                     setState(() {
+                      _activeSupportAction = null;
                       _currentQuestionIndex++;
                       _liveTranscript = '';
                       _answerController.clear();
