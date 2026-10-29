@@ -3,6 +3,12 @@ import { authenticateRequest, successResponse, errorResponse } from "../../../_h
 import { AssessmentItemDto, AssessmentResultDto, CefrLevel } from "@english-coach/contracts";
 import { AiTaskRouter } from "@/lib/ai/task-router";
 import { AiTaskType } from "@prisma/client";
+import {
+  assessmentPromptForLevel,
+  nextAdaptiveLevel,
+  normalizeScore,
+  validateEnglishAnswer,
+} from "@/lib/assessment/answer-policy";
 
 export async function POST(
   request: Request,
@@ -63,6 +69,11 @@ export async function POST(
       return errorResponse("NOT_FOUND", "No active item found for assessment", 404);
     }
 
+    const validation = validateEnglishAnswer(transcript, currentItem.targetLevel);
+    if (!validation.valid) {
+      return errorResponse(validation.code, validation.message, 400);
+    }
+
     // Real AI Evaluation via AiTaskRouter (Gemini)
     let evalScore = 0;
     let feedbackJson: any = null;
@@ -97,31 +108,38 @@ Learner's Submitted Answer: "${transcript}"`,
         { userId: auth.userId }
       );
 
+      if (aiResponse.modelIdentifier.startsWith("mock-")) {
+        throw new Error("No live AI evaluator is available");
+      }
+
       if (aiResponse.parsedJson && typeof aiResponse.parsedJson === "object") {
         const parsed = aiResponse.parsedJson as any;
-        evalScore = Number(parsed.overallScore ?? parsed.scores?.overall ?? 0);
+        evalScore = normalizeScore(parsed.overallScore ?? parsed.scores?.overall) ?? -1;
         feedbackJson = parsed;
       } else {
         const text = aiResponse.content.trim();
         const jsonMatch = text.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
           const parsed = JSON.parse(jsonMatch[0]);
-          evalScore = Number(parsed.overallScore ?? parsed.scores?.overall ?? 0);
+          evalScore = normalizeScore(parsed.overallScore ?? parsed.scores?.overall) ?? -1;
           feedbackJson = parsed;
         }
       }
     } catch (e) {
-      console.warn("AI assessment evaluation fallback triggered:", e);
-      // Fallback heuristic: check for gibberish
-      const clean = transcript.replace(/[^a-zA-Z\s]/g, "").trim();
-      const words = clean.split(/\s+/).filter((w: string) => w.length > 1);
-      // Check for repeated characters like 'hhhhhh'
-      const hasGibberish = /(.)\1{4,}/.test(transcript);
-      if (hasGibberish || words.length < 2) {
-        evalScore = 0;
-      } else {
-        evalScore = Math.min(80, Math.max(20, words.length * 8));
-      }
+      console.warn("AI assessment evaluation unavailable:", e);
+      return errorResponse(
+        "EVALUATION_UNAVAILABLE",
+        "Your answer was not saved because reliable evaluation is temporarily unavailable. Please try again.",
+        503
+      );
+    }
+
+    if (evalScore < 0 || !feedbackJson) {
+      return errorResponse(
+        "INVALID_EVALUATION",
+        "The evaluator returned an invalid result. Please try again.",
+        503
+      );
     }
 
     await prisma.assessmentItem.update({
@@ -138,16 +156,8 @@ Learner's Submitted Answer: "${transcript}"`,
     if (!isLastQuestion) {
       const nextQuestionNum = assessment.currentQuestion + 1;
 
-      const prompts = [
-        { level: "A1", text: "Describe your family and where you live in 2-3 sentences." },
-        { level: "A2", text: "What did you do last weekend? Talk about your activities." },
-        { level: "B1", text: "Why is learning English important for your future career or travel?" },
-        { level: "B2", text: "Do you think artificial intelligence will replace human jobs in the next 10 years? Why or why not?" },
-        { level: "C1", text: "Analyze the societal impact of remote work on urban planning and mental health." },
-        { level: "C2", text: "Discuss the nuance between technological determinism and social shaping of technology." },
-      ];
-
-      const nextPrompt = prompts[nextQuestionNum - 1] || prompts[prompts.length - 1];
+      const nextLevel = nextAdaptiveLevel(currentItem.targetLevel, evalScore);
+      const nextPrompt = assessmentPromptForLevel(nextLevel);
 
       const nextItem = await prisma.assessmentItem.create({
         data: {
@@ -180,12 +190,30 @@ Learner's Submitted Answer: "${transcript}"`,
       const totalScore = allItems.reduce((acc, curr) => acc + (curr.evalScore ?? 0), 0);
       const avgScore = Math.round(totalScore / (allItems.length || 1));
 
-      let determinedLevel: CefrLevel = "A1";
-      if (avgScore >= 90) determinedLevel = "C1";
-      else if (avgScore >= 75) determinedLevel = "B2";
-      else if (avgScore >= 60) determinedLevel = "B1";
-      else if (avgScore >= 40) determinedLevel = "A2";
-      else determinedLevel = "A1";
+      const levelOrder: CefrLevel[] = ["A1", "A2", "B1", "B2", "C1", "C2"];
+      const passedLevels = allItems
+        .filter((item) => (item.evalScore ?? 0) >= 60)
+        .map((item) => item.targetLevel as CefrLevel);
+      const determinedLevel = passedLevels.reduce<CefrLevel>(
+        (highest, level) =>
+          levelOrder.indexOf(level) > levelOrder.indexOf(highest) ? level : highest,
+        "A1"
+      );
+
+      const componentAverage = (key: string, fallback: number) => {
+        const values = allItems
+          .map((item) => {
+            const feedback = item.feedbackJson as Record<string, unknown> | null;
+            return normalizeScore(feedback?.[key]);
+          })
+          .filter((value): value is number => value !== null);
+        return values.length
+          ? Math.round(values.reduce((sum, value) => sum + value, 0) / values.length)
+          : fallback;
+      };
+      const grammarScore = componentAverage("grammarScore", avgScore);
+      const vocabularyScore = componentAverage("vocabularyScore", avgScore);
+      const fluencyScore = componentAverage("fluencyScore", avgScore);
 
       const completedAt = new Date();
 
@@ -204,9 +232,10 @@ Learner's Submitted Answer: "${transcript}"`,
         data: {
           currentLevel: determinedLevel,
           overallScore: avgScore,
-          grammarScore: Math.min(100, avgScore + 2),
-          vocabularyScore: Math.min(100, avgScore - 2),
-          fluencyScore: avgScore,
+          grammarScore,
+          vocabularyScore,
+          fluencyScore,
+          pronunciationScore: 0,
           lastTrainedDate: completedAt,
         },
       });
@@ -216,9 +245,9 @@ Learner's Submitted Answer: "${transcript}"`,
         assessedLevel: determinedLevel,
         overallScore: avgScore,
         skillBreakdown: {
-          grammar: Math.min(100, avgScore + 2),
-          vocabulary: Math.min(100, avgScore - 2),
-          fluency: avgScore,
+          grammar: grammarScore,
+          vocabulary: vocabularyScore,
+          fluency: fluencyScore,
         },
         studyPlanSummary: `You are placed at ${determinedLevel}. Focus on complex sentence connectors and professional vocabulary to advance to the next level.`,
         completedAt: completedAt.toISOString(),
@@ -231,4 +260,3 @@ Learner's Submitted Answer: "${transcript}"`,
     return errorResponse("SERVER_ERROR", "Failed to submit assessment item", 500);
   }
 }
-

@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../config/theme.dart';
+import '../widgets/english_answer_formatter.dart';
 import '../models/session.dart';
 import '../providers/app_provider.dart';
+import '../services/tts_service.dart';
+import '../services/stt_service.dart';
 
 class SessionScreen extends StatefulWidget {
   const SessionScreen({super.key});
@@ -11,21 +14,104 @@ class SessionScreen extends StatefulWidget {
   State<SessionScreen> createState() => _SessionScreenState();
 }
 
-class _SessionScreenState extends State<SessionScreen> {
+class _SessionScreenState extends State<SessionScreen>
+    with TickerProviderStateMixin {
   final _answerController = TextEditingController();
+  final TtsService _tts = TtsService();
+  final SttService _stt = SttService();
+
   int _currentQuestionIndex = 0;
+  bool _isTtsSpeaking = false;
+  bool _isSttListening = false;
+  String _liveTranscript = '';
+  double _soundLevel = 0.0;
+  bool _showTextInput = false; // Toggle between mic and keyboard
+  bool _autoPlayTts = true;
+
+  late AnimationController _micPulseController;
+  late AnimationController _speakerPulseController;
 
   @override
   void initState() {
     super.initState();
+
+    _micPulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
+
+    _speakerPulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+
+    _initAudioServices();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<AppProvider>().fetchCurrentSession();
     });
   }
 
+  Future<void> _initAudioServices() async {
+    // Initialize TTS
+    await _tts.initialize();
+    _tts.onStart = () {
+      if (mounted) setState(() => _isTtsSpeaking = true);
+      _speakerPulseController.repeat(reverse: true);
+    };
+    _tts.onComplete = () {
+      if (mounted) setState(() => _isTtsSpeaking = false);
+      _speakerPulseController.stop();
+      _speakerPulseController.reset();
+    };
+    _tts.onError = () {
+      if (mounted) setState(() => _isTtsSpeaking = false);
+      _speakerPulseController.stop();
+    };
+
+    // Initialize STT
+    await _stt.initialize();
+    _stt.onResult = (text) {
+      if (mounted) {
+        setState(() => _liveTranscript = text);
+        _answerController.text = text;
+      }
+    };
+    _stt.onSoundLevel = (level) {
+      if (mounted) setState(() => _soundLevel = level);
+    };
+    _stt.onListeningStarted = () {
+      if (mounted) {
+        setState(() => _isSttListening = true);
+        _micPulseController.repeat(reverse: true);
+      }
+    };
+    _stt.onListeningStopped = () {
+      if (mounted) {
+        setState(() => _isSttListening = false);
+        _micPulseController.stop();
+        _micPulseController.reset();
+      }
+    };
+    _stt.onError = (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('🎤 Microphone error: $error'),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+      }
+    };
+  }
+
   @override
   void dispose() {
     _answerController.dispose();
+    _tts.dispose();
+    _stt.dispose();
+    _micPulseController.dispose();
+    _speakerPulseController.dispose();
     super.dispose();
   }
 
@@ -34,18 +120,41 @@ class _SessionScreenState extends State<SessionScreen> {
       case 'OPEN_SPEECH':
         return '🎤 Open Speech';
       case 'SENTENCE_REPETITION':
-        return '🔁 Sentence Repetition';
+        return '🔁 Repeat After Me';
       case 'READING_ALOUD':
-        return '📖 Reading Aloud';
+        return '📖 Read Aloud';
       case 'PICTURE_DESCRIPTION':
-        return '🖼️ Picture Description';
+        return '🖼️ Describe';
       case 'CONVERSATION_PROMPT':
         return '💬 Conversation';
       case 'GRAMMAR_REPAIR':
-        return '🔧 Grammar Repair';
+        return '🔧 Fix the Grammar';
       default:
         return '✍️ Exercise';
     }
+  }
+
+  String _getQuestionInstruction(String type) {
+    switch (type) {
+      case 'OPEN_SPEECH':
+        return 'Listen to the question, then speak your answer clearly.';
+      case 'SENTENCE_REPETITION':
+        return 'Listen carefully, then repeat the sentence exactly.';
+      case 'READING_ALOUD':
+        return 'Read the text aloud with clear pronunciation.';
+      case 'PICTURE_DESCRIPTION':
+        return 'Describe what you see using complete sentences.';
+      case 'CONVERSATION_PROMPT':
+        return 'Listen and respond naturally as in a conversation.';
+      case 'GRAMMAR_REPAIR':
+        return 'Find and fix the grammar mistake in the sentence.';
+      default:
+        return 'Answer the question below.';
+    }
+  }
+
+  bool _isAudioQuestion(String type) {
+    return type != 'GRAMMAR_REPAIR';
   }
 
   @override
@@ -59,18 +168,42 @@ class _SessionScreenState extends State<SessionScreen> {
         actions: [
           if (session != null && session.status == 'ACTIVE')
             Padding(
-              padding: const EdgeInsets.only(right: 16),
+              padding: const EdgeInsets.only(right: 8),
               child: Center(
-                child: Text(
-                  'Q ${_currentQuestionIndex + 1} / ${session.questions.length}',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.primaryColor,
-                    fontSize: 15,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    'Q ${_currentQuestionIndex + 1} / ${session.questions.length}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.primaryColor,
+                      fontSize: 14,
+                    ),
                   ),
                 ),
               ),
             ),
+          // Auto-play TTS toggle
+          IconButton(
+            tooltip: _autoPlayTts ? 'Auto-read ON' : 'Auto-read OFF',
+            icon: Icon(
+              _autoPlayTts
+                  ? Icons.volume_up_rounded
+                  : Icons.volume_off_rounded,
+              color: _autoPlayTts
+                  ? AppTheme.primaryColor
+                  : const Color(0xFF94A3B8),
+            ),
+            onPressed: () {
+              setState(() => _autoPlayTts = !_autoPlayTts);
+            },
+          ),
+          const SizedBox(width: 4),
         ],
       ),
       body: Center(
@@ -86,11 +219,28 @@ class _SessionScreenState extends State<SessionScreen> {
   }
 
   Widget _buildContent(AppProvider provider, DailySessionModel? session) {
+    // Show error if any
+    if (provider.errorMessage != null && session == null) {
+      return _buildErrorState(provider);
+    }
+
     if (provider.isLoading && session == null) {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(40),
-          child: CircularProgressIndicator(),
+          child: Column(
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text(
+                'Generating your personalized exercises...',
+                style: TextStyle(
+                  color: Color(0xFF64748B),
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }
@@ -103,7 +253,15 @@ class _SessionScreenState extends State<SessionScreen> {
       return _buildNoActiveSession(provider);
     }
 
-    final question = session.questions[_currentQuestionIndex.clamp(0, session.questions.length - 1)];
+    final question = session
+        .questions[_currentQuestionIndex.clamp(0, session.questions.length - 1)];
+
+    // Auto-play TTS when question changes
+    if (_autoPlayTts && !_isTtsSpeaking && !_isSttListening) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _speakQuestion(question);
+      });
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -114,130 +272,19 @@ class _SessionScreenState extends State<SessionScreen> {
           child: LinearProgressIndicator(
             value: (_currentQuestionIndex + 1) / session.questions.length,
             backgroundColor: const Color(0xFFE2E8F0),
-            valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+            valueColor:
+                const AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
             minHeight: 8,
           ),
         ),
         const SizedBox(height: 24),
 
-        // Question Card
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primaryColor.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        _formatQuestionType(question.questionType),
-                        style: const TextStyle(
-                          color: AppTheme.primaryColor,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      'Difficulty: ${question.difficultyScore.toStringAsFixed(1)}',
-                      style: const TextStyle(
-                        color: Color(0xFF94A3B8),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  question.promptText,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF0F172A),
-                    height: 1.4,
-                  ),
-                ),
-                if (question.contextHint != null && question.contextHint!.isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF8FAFC),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Icon(Icons.lightbulb_outline, size: 18, color: AppTheme.warningColor),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Hint: ${question.contextHint}',
-                            style: const TextStyle(
-                              color: Color(0xFF475569),
-                              fontSize: 13,
-                              fontStyle: FontStyle.italic,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
+        // Question Card with Audio
+        _buildQuestionCard(question),
         const SizedBox(height: 20),
 
-        // Answer Input Field
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Text(
-                  'Your Response:',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                    color: Color(0xFF334155),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: _answerController,
-                  maxLines: 4,
-                  decoration: const InputDecoration(
-                    hintText: 'Type your answer here in English...',
-                  ),
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton.icon(
-                  onPressed: provider.isLoading ? null : () => _submit(provider, question.id),
-                  icon: provider.isLoading
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                        )
-                      : const Icon(Icons.send_rounded),
-                  label: Text(provider.isLoading ? 'Evaluating with AI...' : 'Submit Answer'),
-                ),
-              ],
-            ),
-          ),
-        ),
+        // Audio Input Section
+        _buildAudioInputSection(provider, question),
 
         // Latest AI Evaluation Result Display
         if (provider.lastEvaluation != null) ...[
@@ -248,17 +295,617 @@ class _SessionScreenState extends State<SessionScreen> {
     );
   }
 
+  Widget _buildQuestionCard(SessionQuestionModel question) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Question type + difficulty row
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryColor.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    _formatQuestionType(question.questionType),
+                    style: const TextStyle(
+                      color: AppTheme.primaryColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+                Text(
+                  'Difficulty: ${question.difficultyScore.toStringAsFixed(1)}',
+                  style: const TextStyle(
+                    color: Color(0xFF94A3B8),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // Instruction text
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppTheme.accentColor.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    _isAudioQuestion(question.questionType)
+                        ? Icons.headset_mic_rounded
+                        : Icons.edit_rounded,
+                    size: 16,
+                    color: AppTheme.accentColor,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _getQuestionInstruction(question.questionType),
+                      style: TextStyle(
+                        color: AppTheme.accentColor.withValues(alpha: 0.9),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Question text
+            Text(
+              question.promptText,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF0F172A),
+                height: 1.4,
+              ),
+            ),
+
+            // Context hint
+            if (question.contextHint != null &&
+                question.contextHint!.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.lightbulb_outline,
+                        size: 18, color: AppTheme.warningColor),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Hint: ${question.contextHint}',
+                        style: const TextStyle(
+                          color: Color(0xFF475569),
+                          fontSize: 13,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
+            const SizedBox(height: 16),
+
+            // 🔊 Listen Button Row
+            Row(
+              children: [
+                // Play normal speed
+                _buildTtsButton(
+                  icon: _isTtsSpeaking
+                      ? Icons.stop_circle_rounded
+                      : Icons.volume_up_rounded,
+                  label: _isTtsSpeaking ? 'Stop' : 'Listen',
+                  onPressed: () {
+                    if (_isTtsSpeaking) {
+                      _tts.stop();
+                    } else {
+                      _speakQuestion(question);
+                    }
+                  },
+                  isActive: _isTtsSpeaking,
+                ),
+                const SizedBox(width: 8),
+                // Play slow speed
+                _buildTtsButton(
+                  icon: Icons.slow_motion_video_rounded,
+                  label: 'Slow',
+                  onPressed: () {
+                    _tts.speakAtSpeed(question.promptText, 0.25);
+                  },
+                  isActive: false,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTtsButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onPressed,
+    required bool isActive,
+  }) {
+    return AnimatedBuilder(
+      animation: _speakerPulseController,
+      builder: (context, child) {
+        return OutlinedButton.icon(
+          onPressed: onPressed,
+          icon: Icon(
+            icon,
+            size: 18,
+            color: isActive ? Colors.white : AppTheme.primaryColor,
+          ),
+          label: Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: isActive ? Colors.white : AppTheme.primaryColor,
+            ),
+          ),
+          style: OutlinedButton.styleFrom(
+            backgroundColor: isActive
+                ? AppTheme.primaryColor
+                    .withValues(alpha: 0.7 + (_speakerPulseController.value * 0.3))
+                : Colors.transparent,
+            side: BorderSide(
+              color: AppTheme.primaryColor.withValues(alpha: 0.4),
+            ),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildAudioInputSection(
+      AppProvider provider, SessionQuestionModel question) {
+    final isAudio = _isAudioQuestion(question.questionType);
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Input mode toggle (only for audio questions)
+            if (isAudio) ...[
+              Row(
+                children: [
+                  const Text(
+                    'Your Response:',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      color: Color(0xFF334155),
+                    ),
+                  ),
+                  const Spacer(),
+                  // Toggle mic / keyboard
+                  SegmentedButton<bool>(
+                    segments: const [
+                      ButtonSegment<bool>(
+                        value: false,
+                        icon: Icon(Icons.mic, size: 16),
+                        label: Text('Speak', style: TextStyle(fontSize: 12)),
+                      ),
+                      ButtonSegment<bool>(
+                        value: true,
+                        icon: Icon(Icons.keyboard, size: 16),
+                        label: Text('Type', style: TextStyle(fontSize: 12)),
+                      ),
+                    ],
+                    selected: {_showTextInput},
+                    onSelectionChanged: (value) {
+                      setState(() => _showTextInput = value.first);
+                      if (!value.first) {
+                        // Switching to mic — stop any TTS
+                        _tts.stop();
+                      }
+                    },
+                    style: ButtonStyle(
+                      visualDensity: VisualDensity.compact,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+            ] else ...[
+              const Text(
+                'Your Response:',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                  color: Color(0xFF334155),
+                ),
+              ),
+              const SizedBox(height: 10),
+            ],
+
+            // Microphone Input (default for audio questions)
+            if (isAudio && !_showTextInput) ...[
+              _buildMicrophoneInput(provider, question),
+            ] else ...[
+              // Text Input (for GRAMMAR_REPAIR or manual toggle)
+              _buildTextInput(provider, question),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMicrophoneInput(
+      AppProvider provider, SessionQuestionModel question) {
+    return Column(
+      children: [
+        // Live transcript display
+        if (_liveTranscript.isNotEmpty || _isSttListening) ...[
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: _isSttListening
+                    ? AppTheme.primaryColor.withValues(alpha: 0.5)
+                    : const Color(0xFFE2E8F0),
+                width: _isSttListening ? 2 : 1,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    if (_isSttListening) ...[
+                      _buildSoundLevelIndicator(),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'Listening...',
+                        style: TextStyle(
+                          color: AppTheme.primaryColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ] else ...[
+                      const Icon(Icons.text_snippet_outlined,
+                          size: 14, color: Color(0xFF94A3B8)),
+                      const SizedBox(width: 6),
+                      const Text(
+                        'Your speech:',
+                        style: TextStyle(
+                          color: Color(0xFF94A3B8),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _liveTranscript.isEmpty
+                      ? 'Start speaking...'
+                      : _liveTranscript,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: _liveTranscript.isEmpty
+                        ? const Color(0xFFCBD5E1)
+                        : const Color(0xFF0F172A),
+                    fontWeight: FontWeight.w500,
+                    height: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+
+        // Microphone Button
+        AnimatedBuilder(
+          animation: _micPulseController,
+          builder: (context, child) {
+            final scale =
+                _isSttListening ? 1.0 + (_micPulseController.value * 0.1) : 1.0;
+            return Transform.scale(
+              scale: scale,
+              child: GestureDetector(
+                onTap: () => _toggleMicrophone(),
+                child: Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: _isSttListening
+                        ? AppTheme.errorColor
+                        : AppTheme.primaryColor,
+                    boxShadow: [
+                      BoxShadow(
+                        color: (_isSttListening
+                                ? AppTheme.errorColor
+                                : AppTheme.primaryColor)
+                            .withValues(alpha: 0.3),
+                        blurRadius: _isSttListening ? 20 : 10,
+                        spreadRadius: _isSttListening ? 4 : 0,
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    _isSttListening ? Icons.stop_rounded : Icons.mic_rounded,
+                    color: Colors.white,
+                    size: 36,
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 12),
+        Text(
+          _isSttListening
+              ? 'Tap to stop recording'
+              : 'Tap to start speaking',
+          style: const TextStyle(
+            color: Color(0xFF64748B),
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // Submit button (visible when there's a transcript)
+        if (_liveTranscript.isNotEmpty && !_isSttListening) ...[
+          Row(
+            children: [
+              // Re-record button
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _liveTranscript = '';
+                      _answerController.clear();
+                    });
+                    _toggleMicrophone();
+                  },
+                  icon: const Icon(Icons.refresh_rounded, size: 18),
+                  label: const Text('Re-record'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    side: const BorderSide(color: Color(0xFFCBD5E1)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Submit button
+              Expanded(
+                flex: 2,
+                child: ElevatedButton.icon(
+                  onPressed: provider.isLoading
+                      ? null
+                      : () => _submit(provider, question.id),
+                  icon: provider.isLoading
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Icon(Icons.send_rounded),
+                  label: Text(provider.isLoading
+                      ? 'Evaluating...'
+                      : 'Submit Answer'),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildSoundLevelIndicator() {
+    // Normalize sound level (usually -2 to 10)
+    final normalized = ((_soundLevel + 2) / 12).clamp(0.0, 1.0);
+    return SizedBox(
+      width: 40,
+      height: 14,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: List.generate(5, (i) {
+          final threshold = (i + 1) / 5;
+          return Container(
+            width: 4,
+            height: normalized >= threshold ? 14 : 6,
+            decoration: BoxDecoration(
+              color: normalized >= threshold
+                  ? AppTheme.primaryColor
+                  : const Color(0xFFCBD5E1),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
+  Widget _buildTextInput(AppProvider provider, SessionQuestionModel question) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TextField(
+          controller: _answerController,
+          maxLines: 4,
+          inputFormatters: [englishAnswerFormatter],
+          decoration: const InputDecoration(
+            hintText: 'Type your answer here in English...',
+            helperText: 'English letters only. Arabic letters are not accepted.',
+          ),
+        ),
+        const SizedBox(height: 16),
+        ElevatedButton.icon(
+          onPressed: provider.isLoading
+              ? null
+              : () => _submit(provider, question.id),
+          icon: provider.isLoading
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: Colors.white),
+                )
+              : const Icon(Icons.send_rounded),
+          label: Text(
+              provider.isLoading ? 'Evaluating with AI...' : 'Submit Answer'),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _toggleMicrophone() async {
+    // Stop TTS if playing
+    if (_isTtsSpeaking) {
+      await _tts.stop();
+    }
+
+    if (_isSttListening) {
+      final transcript = await _stt.stopListening();
+      setState(() {
+        _liveTranscript = transcript;
+        _answerController.text = transcript;
+      });
+    } else {
+      setState(() {
+        _liveTranscript = '';
+        _answerController.clear();
+      });
+
+      final started = await _stt.startListening();
+      if (!started && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.mic_off, color: Colors.white, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    _stt.lastError ??
+                        'Could not access microphone. Please check permissions.',
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: AppTheme.errorColor,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    }
+  }
+
+  void _speakQuestion(SessionQuestionModel question) {
+    if (_isSttListening) return; // Don't speak while listening
+    _tts.speak(question.promptText);
+  }
+
   void _submit(AppProvider provider, String questionId) async {
     final text = _answerController.text.trim();
-    if (text.isEmpty) return;
+    if (text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.white, size: 20),
+              SizedBox(width: 8),
+              Text('Please speak or type your answer first.'),
+            ],
+          ),
+          backgroundColor: AppTheme.warningColor,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
 
     final success = await provider.submitAnswer(questionId, text);
     if (success) {
       _answerController.clear();
+      setState(() => _liveTranscript = '');
+
+      // Read the corrected sentence aloud for learning
+      if (provider.lastEvaluation != null && _autoPlayTts) {
+        await Future.delayed(const Duration(milliseconds: 500));
+        _tts.speak(provider.lastEvaluation!.correctedSentence);
+      }
+    } else if (mounted) {
+      // Show error to user
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.error_outline, color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  provider.errorMessage ?? 'Failed to submit answer. Try again.',
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: AppTheme.errorColor,
+          behavior: SnackBarBehavior.floating,
+          action: SnackBarAction(
+            label: 'Retry',
+            textColor: Colors.white,
+            onPressed: () => _submit(provider, questionId),
+          ),
+        ),
+      );
     }
   }
 
-  Widget _buildEvaluationFeedback(AppProvider provider, DailySessionModel session) {
+  Widget _buildEvaluationFeedback(
+      AppProvider provider, DailySessionModel session) {
     final eval = provider.lastEvaluation!;
     final isLast = _currentQuestionIndex >= session.questions.length - 1;
 
@@ -275,26 +922,34 @@ class _SessionScreenState extends State<SessionScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Header
             Row(
               children: [
                 Icon(
-                  eval.isPassed ? Icons.check_circle_rounded : Icons.info_outline_rounded,
-                  color: eval.isPassed ? AppTheme.successColor : AppTheme.warningColor,
+                  eval.isPassed
+                      ? Icons.check_circle_rounded
+                      : Icons.info_outline_rounded,
+                  color: eval.isPassed
+                      ? AppTheme.successColor
+                      : AppTheme.warningColor,
                   size: 28,
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    eval.isPassed ? 'Great Job!' : 'Keep Practicing!',
+                    eval.isPassed ? 'Great Job! 🎉' : 'Keep Practicing! 💪',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: eval.isPassed ? AppTheme.successColor : AppTheme.warningColor,
+                      color: eval.isPassed
+                          ? AppTheme.successColor
+                          : AppTheme.warningColor,
                     ),
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     color: AppTheme.primaryColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
@@ -310,6 +965,12 @@ class _SessionScreenState extends State<SessionScreen> {
               ],
             ),
             const SizedBox(height: 16),
+
+            // Score Breakdown (with pronunciation & fluency)
+            _buildScoreBreakdown(eval),
+            const SizedBox(height: 16),
+
+            // Corrected sentence with listen button
             const Text(
               'Polished Expression:',
               style: TextStyle(
@@ -326,16 +987,45 @@ class _SessionScreenState extends State<SessionScreen> {
                 color: const Color(0xFFF1F5F9),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Text(
-                eval.correctedSentence,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF0F172A),
-                ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      eval.correctedSentence,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF0F172A),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // Listen to corrected version
+                  IconButton(
+                    icon: Icon(
+                      _isTtsSpeaking
+                          ? Icons.stop_circle
+                          : Icons.volume_up_rounded,
+                      color: AppTheme.primaryColor,
+                      size: 22,
+                    ),
+                    onPressed: () {
+                      if (_isTtsSpeaking) {
+                        _tts.stop();
+                      } else {
+                        _tts.speak(eval.correctedSentence);
+                      }
+                    },
+                    tooltip: 'Listen to correct pronunciation',
+                    constraints: const BoxConstraints(),
+                    padding: const EdgeInsets.all(4),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 12),
+
+            // Explanation
             Text(
               eval.explanationMarkdown,
               style: const TextStyle(
@@ -344,6 +1034,8 @@ class _SessionScreenState extends State<SessionScreen> {
                 height: 1.4,
               ),
             ),
+
+            // Identified Errors
             if (eval.identifiedErrors.isNotEmpty) ...[
               const SizedBox(height: 12),
               const Divider(),
@@ -353,12 +1045,14 @@ class _SessionScreenState extends State<SessionScreen> {
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(Icons.close, color: AppTheme.errorColor, size: 16),
+                        const Icon(Icons.close,
+                            color: AppTheme.errorColor, size: 16),
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
                             '"${err.wrongSnippet}" → "${err.correctSnippet}": ${err.explanation}',
-                            style: const TextStyle(fontSize: 12, color: Color(0xFF475569)),
+                            style: const TextStyle(
+                                fontSize: 12, color: Color(0xFF475569)),
                           ),
                         ),
                       ],
@@ -366,22 +1060,139 @@ class _SessionScreenState extends State<SessionScreen> {
                   )),
             ],
             const SizedBox(height: 16),
+
+            // Next / Finish Button
             Align(
               alignment: Alignment.centerRight,
               child: ElevatedButton.icon(
                 onPressed: () {
+                  _tts.stop();
                   if (isLast) {
-                    // Refresh session state to show completed screen
                     provider.fetchCurrentSession();
                   } else {
                     setState(() {
                       _currentQuestionIndex++;
+                      _liveTranscript = '';
+                      _answerController.clear();
                     });
+                    // Clear last evaluation for fresh view
+                    provider.clearError();
                   }
                 },
-                icon: Icon(isLast ? Icons.check_circle : Icons.arrow_forward_rounded),
+                icon: Icon(isLast
+                    ? Icons.check_circle
+                    : Icons.arrow_forward_rounded),
                 label: Text(isLast ? 'Finish Session' : 'Next Question'),
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildScoreBreakdown(dynamic eval) {
+    return Row(
+      children: [
+        _buildScoreChip('Grammar', eval.grammarScore, Icons.spellcheck),
+        const SizedBox(width: 6),
+        _buildScoreChip('Vocab', eval.vocabularyScore, Icons.menu_book),
+        const SizedBox(width: 6),
+        _buildScoreChip(
+            'Fluency', eval.fluencyScore, Icons.record_voice_over),
+        const SizedBox(width: 6),
+        _buildScoreChip(
+            'Pronun.', eval.pronunciationScore, Icons.hearing),
+      ],
+    );
+  }
+
+  Widget _buildScoreChip(String label, double score, IconData icon) {
+    final color = score >= 80
+        ? AppTheme.successColor
+        : score >= 50
+            ? AppTheme.warningColor
+            : AppTheme.errorColor;
+
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, size: 16, color: color),
+            const SizedBox(height: 4),
+            Text(
+              '${score.toStringAsFixed(0)}%',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 10,
+                color: Color(0xFF64748B),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorState(AppProvider provider) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(36),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: const BoxDecoration(
+                color: Color(0xFFFEE2E2),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.error_outline_rounded,
+                size: 48,
+                color: AppTheme.errorColor,
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'Something went wrong',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF0F172A),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              provider.errorMessage ?? 'Could not connect to server.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 14,
+                color: Color(0xFF64748B),
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () {
+                provider.clearError();
+                provider.startSession();
+              },
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Try Again'),
             ),
           ],
         ),
@@ -396,6 +1207,7 @@ class _SessionScreenState extends State<SessionScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Audio-themed icon
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -403,14 +1215,14 @@ class _SessionScreenState extends State<SessionScreen> {
                 shape: BoxShape.circle,
               ),
               child: const Icon(
-                Icons.menu_book_rounded,
+                Icons.headset_mic_rounded,
                 size: 56,
                 color: AppTheme.primaryColor,
               ),
             ),
             const SizedBox(height: 24),
             const Text(
-              'Start Today\'s Daily Training',
+              'Start Today\'s Training',
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
@@ -419,7 +1231,7 @@ class _SessionScreenState extends State<SessionScreen> {
             ),
             const SizedBox(height: 10),
             const Text(
-              'Receive 5 AI-curated English exercises tailored to your current CEFR level with instant grammar and fluency diagnostics.',
+              'Practice listening and speaking with 5 AI-curated exercises.\nSpeak your answers and get instant pronunciation feedback!',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 14,
@@ -427,25 +1239,136 @@ class _SessionScreenState extends State<SessionScreen> {
                 height: 1.5,
               ),
             ),
+            const SizedBox(height: 12),
+
+            // Feature badges
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _buildFeatureBadge(Icons.volume_up, 'Listen'),
+                _buildFeatureBadge(Icons.mic, 'Speak'),
+                _buildFeatureBadge(Icons.auto_awesome, 'AI Feedback'),
+                _buildFeatureBadge(Icons.trending_up, 'Track Progress'),
+              ],
+            ),
             const SizedBox(height: 28),
+
+            // Start button with error handling
             ElevatedButton.icon(
-              onPressed: provider.isLoading ? null : () => provider.startSession(),
+              onPressed: provider.isLoading
+                  ? null
+                  : () async {
+                      final success = await provider.startSession();
+                      if (!success && mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Row(
+                              children: [
+                                const Icon(Icons.error_outline,
+                                    color: Colors.white, size: 20),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    provider.errorMessage ??
+                                        'Failed to start session. Check your connection.',
+                                  ),
+                                ),
+                              ],
+                            ),
+                            backgroundColor: AppTheme.errorColor,
+                            behavior: SnackBarBehavior.floating,
+                            duration: const Duration(seconds: 5),
+                            action: SnackBarAction(
+                              label: 'Retry',
+                              textColor: Colors.white,
+                              onPressed: () => provider.startSession(),
+                            ),
+                          ),
+                        );
+                      }
+                    },
               icon: provider.isLoading
                   ? const SizedBox(
                       width: 20,
                       height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white),
                     )
                   : const Icon(Icons.rocket_launch_rounded),
-              label: Text(provider.isLoading ? 'Generating Exercises...' : 'Start Session Now'),
+              label: Text(provider.isLoading
+                  ? 'Generating Exercises...'
+                  : 'Start Session Now'),
               style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
               ),
             ),
+
+            // Error message display
+            if (provider.errorMessage != null && !provider.isLoading) ...[
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEF2F2),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFFECACA)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.warning_amber_rounded,
+                        size: 18, color: AppTheme.errorColor),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        provider.errorMessage!,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF991B1B),
+                        ),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => provider.clearError(),
+                      child: const Icon(Icons.close,
+                          size: 16, color: Color(0xFF991B1B)),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
       ),
     );
   }
-}
 
+  Widget _buildFeatureBadge(IconData icon, String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppTheme.primaryColor.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+            color: AppTheme.primaryColor.withValues(alpha: 0.15)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: AppTheme.primaryColor),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.primaryColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

@@ -4,6 +4,7 @@ import { AiTaskRouter } from "@/lib/ai/task-router";
 import { AiTaskType } from "@prisma/client";
 import { authenticateRequest, successResponse, errorResponse } from "@/app/api/_helpers";
 import { QuestionEvaluationResult } from "@english-coach/contracts";
+import { normalizeScore, validateEnglishAnswer } from "@/lib/assessment/answer-policy";
 
 export async function POST(
   request: Request,
@@ -52,6 +53,12 @@ export async function POST(
       return errorResponse("FORBIDDEN", "You do not own this session", 403);
     }
 
+    const validation = validateEnglishAnswer(transcript, question.session.targetLevel);
+    if (!validation.valid) {
+      await QuotaManager.refund(userId, "QUESTION");
+      return errorResponse(validation.code, validation.message, 400);
+    }
+
     const attemptNumber = question.submissions.length + 1;
 
     // 3. Evaluate with AI
@@ -74,22 +81,17 @@ export async function POST(
       }>;
       retryEligible: boolean;
       isPassed: boolean;
-    } = {
-      isMeaningAccurate: true,
-      correctedSentence: transcript,
-      scores: { grammar: 80, vocabulary: 80, overall: 80, fluency: 80, pronunciation: 80 },
-      explanationMarkdown: "Good attempt! Clear and understandable.",
-      identifiedErrors: [],
-      retryEligible: attemptNumber < 3,
-      isPassed: true,
-    };
+    } | null = null;
 
     try {
       const aiResponse = await AiTaskRouter.executeCompletion(
         AiTaskType.ANSWER_EVALUATION,
         {
-          systemPrompt: `You are an encouraging and precise English language evaluator.
+          systemPrompt: `You are an encouraging and expert Cambridge English language and pronunciation coach.
 Evaluate the learner's response against the given prompt.
+The response was spoken by the student and captured via speech recognition (or typed).
+Pay special attention to spoken English patterns, clarity, natural intonation, and common pronunciation pitfalls.
+
 Return ONLY a valid JSON object matching this structure:
 {
   "isMeaningAccurate": boolean,
@@ -101,7 +103,7 @@ Return ONLY a valid JSON object matching this structure:
     "fluency": number (0-100),
     "pronunciation": number (0-100)
   },
-  "explanationMarkdown": string (friendly feedback explaining what went well and what to improve),
+  "explanationMarkdown": string (friendly feedback explaining what went well, pronunciation tips, and what to improve),
   "identifiedErrors": [
     {
       "category": "GRAMMAR" | "VOCABULARY" | "SYNTAX" | "PRONUNCIATION_NOTE" | "COMPREHENSION",
@@ -122,18 +124,65 @@ Learner Response: "${transcript}"`,
         { userId }
       );
 
+      if (aiResponse.modelIdentifier.startsWith("mock-")) {
+        throw new Error("No live AI evaluator is available");
+      }
+
+      let parsedEvaluation: any = null;
+
       if (aiResponse.parsedJson && typeof aiResponse.parsedJson === "object") {
-        evaluationData = { ...evaluationData, ...(aiResponse.parsedJson as typeof evaluationData) };
+        parsedEvaluation = aiResponse.parsedJson;
       } else {
         const text = aiResponse.content.trim();
         const jsonMatch = text.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
-          const parsed = JSON.parse(jsonMatch[0]);
-          evaluationData = { ...evaluationData, ...parsed };
+          parsedEvaluation = JSON.parse(jsonMatch[0]);
         }
       }
+
+      const grammar = normalizeScore(parsedEvaluation?.scores?.grammar);
+      const vocabulary = normalizeScore(parsedEvaluation?.scores?.vocabulary);
+      const overall = normalizeScore(parsedEvaluation?.scores?.overall);
+      if (grammar === null || vocabulary === null || overall === null) {
+        throw new Error("AI evaluator returned invalid scores");
+      }
+
+      evaluationData = {
+        isMeaningAccurate: parsedEvaluation.isMeaningAccurate === true,
+        correctedSentence:
+          typeof parsedEvaluation.correctedSentence === "string"
+            ? parsedEvaluation.correctedSentence
+            : transcript,
+        scores: {
+          grammar,
+          vocabulary,
+          overall,
+          fluency: normalizeScore(parsedEvaluation.scores.fluency) ?? overall,
+          pronunciation: 0,
+        },
+        explanationMarkdown:
+          typeof parsedEvaluation.explanationMarkdown === "string"
+            ? parsedEvaluation.explanationMarkdown
+            : "Evaluation completed.",
+        identifiedErrors: Array.isArray(parsedEvaluation.identifiedErrors)
+          ? parsedEvaluation.identifiedErrors
+          : [],
+        retryEligible: attemptNumber < 3 && overall < 60,
+        isPassed: overall >= 60,
+      };
     } catch (aiErr) {
-      console.warn("AI Evaluation fallback to default evaluation:", aiErr);
+      console.warn("AI evaluation unavailable:", aiErr);
+      await QuotaManager.refund(userId, "QUESTION");
+      return errorResponse(
+        "EVALUATION_UNAVAILABLE",
+        "Your answer was not saved because reliable evaluation is temporarily unavailable. Please try again.",
+        503
+      );
+    }
+
+    if (!evaluationData) {
+      await QuotaManager.refund(userId, "QUESTION");
+      return errorResponse("INVALID_EVALUATION", "The evaluator returned an invalid result.", 503);
     }
 
     // 4. Save Submission
@@ -166,6 +215,14 @@ Learner Response: "${transcript}"`,
         const newVocab = currentProfile.vocabularyScore > 0
           ? (currentProfile.vocabularyScore * 0.7) + (evaluationData.scores.vocabulary * 0.3)
           : evaluationData.scores.vocabulary;
+        const evalFluency = evaluationData.scores.fluency ?? evaluationData.scores.overall;
+        const evalPronunciation = evaluationData.scores.pronunciation ?? evaluationData.scores.overall;
+        const newFluency = currentProfile.fluencyScore > 0
+          ? (currentProfile.fluencyScore * 0.7) + (evalFluency * 0.3)
+          : evalFluency;
+        const newPronunciation = currentProfile.pronunciationScore > 0
+          ? (currentProfile.pronunciationScore * 0.7) + (evalPronunciation * 0.3)
+          : evalPronunciation;
 
         await tx.learningProfile.update({
           where: { userId },
@@ -173,6 +230,8 @@ Learner Response: "${transcript}"`,
             overallScore: Math.round(newOverall * 10) / 10,
             grammarScore: Math.round(newGrammar * 10) / 10,
             vocabularyScore: Math.round(newVocab * 10) / 10,
+            fluencyScore: Math.round(newFluency * 10) / 10,
+            pronunciationScore: Math.round(newPronunciation * 10) / 10,
             dailyStreak: currentProfile.dailyStreak > 0 ? currentProfile.dailyStreak : 1,
             lastTrainedDate: new Date(),
           },
@@ -218,4 +277,3 @@ Learner Response: "${transcript}"`,
     return errorResponse("SERVER_ERROR", "Failed to evaluate question answer", 500);
   }
 }
-

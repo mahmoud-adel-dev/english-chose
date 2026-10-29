@@ -159,6 +159,8 @@ class ProfileScreen extends StatelessWidget {
                         const SizedBox(height: 16),
                         _buildSkillRow('Oral Fluency', profile.fluencyScore, const Color(0xFFD97706)),
                         const SizedBox(height: 16),
+                        _buildSkillRow('Pronunciation & Clarity', profile.pronunciationScore, const Color(0xFF8B5CF6)),
+                        const SizedBox(height: 16),
                         _buildSkillRow('Overall Proficiency', profile.overallScore, AppTheme.primaryColor),
                       ],
                     ),

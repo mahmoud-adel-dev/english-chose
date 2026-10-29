@@ -217,7 +217,7 @@ export class AiTaskRouter {
       try {
         const geminiAdapter = new GeminiAiProviderAdapter(envGeminiKey);
         const res = await this.executeWithTimeout(
-          () => geminiAdapter.generateCompletion("gemini-2.0-flash", mergedReq),
+          () => geminiAdapter.generateCompletion("gemini-3.8-flash", mergedReq),
           timeoutMs
         );
         return res;
@@ -268,7 +268,7 @@ export class AiTaskRouter {
     if (envGeminiKey) {
       try {
         const geminiAdapter = new GeminiAiProviderAdapter(envGeminiKey);
-        return await geminiAdapter.transcribeAudio("gemini-2.0-flash", req);
+        return await geminiAdapter.transcribeAudio("gemini-3.8-flash", req);
       } catch (e) {
         console.warn("[AiTaskRouter] Gemini audio transcription fallback encountered error:", e);
       }

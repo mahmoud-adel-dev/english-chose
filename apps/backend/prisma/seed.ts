@@ -89,13 +89,13 @@ async function main() {
     where: {
       providerId_modelIdentifier: {
         providerId: geminiProvider.id,
-        modelIdentifier: "gemini-2.0-flash"
+        modelIdentifier: "gemini-3.8-flash"
       }
     },
     update: { isActive: true },
     create: {
       providerId: geminiProvider.id,
-      modelIdentifier: "gemini-2.0-flash",
+      modelIdentifier: "gemini-3.8-flash",
       displayName: "Gemini 2.0 Flash (Fast & Low Cost)",
       contextWindow: 1048576,
       supportsVision: true,

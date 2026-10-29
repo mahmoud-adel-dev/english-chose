@@ -27,6 +27,9 @@ class ApiConfig {
   static const String assessmentStart = '$baseUrl/assessment/start';
   static String assessmentSubmit(String id) => '$baseUrl/assessment/$id/submit';
 
+  // Speech & Audio Processing
+  static const String speechTranscribe = '$baseUrl/speech/transcribe';
+
   // Admin & Governance Endpoints
   static const String adminAnalytics = '$baseUrl/admin/analytics';
   static const String adminProviders = '$baseUrl/admin/providers';

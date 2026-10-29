@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { authenticateRequest, successResponse, errorResponse } from "../../_helpers";
 import { AssessmentItemDto } from "@english-coach/contracts";
+import { assessmentPromptForLevel } from "@/lib/assessment/answer-policy";
 
 export async function POST(request: Request) {
   try {
@@ -37,18 +38,8 @@ export async function POST(request: Request) {
     let currentItem = assessment.items.find((item) => item.transcript === null);
 
     if (!currentItem) {
-      // Standard CEFR progression prompt
-      const prompts = [
-        { level: "A1", text: "Describe your family and where you live in 2-3 sentences." },
-        { level: "A2", text: "What did you do last weekend? Talk about your activities." },
-        { level: "B1", text: "Why is learning English important for your future career or travel?" },
-        { level: "B2", text: "Do you think artificial intelligence will replace human jobs in the next 10 years? Why or why not?" },
-        { level: "C1", text: "Analyze the societal impact of remote work on urban planning and mental health." },
-        { level: "C2", text: "Discuss the nuance between technological determinism and social shaping of technology." },
-      ];
-
-      const itemIdx = Math.min(assessment.currentQuestion - 1, prompts.length - 1);
-      const chosen = prompts[itemIdx];
+      // Begin in the middle of the CEFR scale; later questions adapt to performance.
+      const chosen = assessmentPromptForLevel("B1");
 
       currentItem = await prisma.assessmentItem.create({
         data: {
@@ -74,4 +65,3 @@ export async function POST(request: Request) {
     return errorResponse("SERVER_ERROR", "Failed to start CEFR placement assessment", 500);
   }
 }
-

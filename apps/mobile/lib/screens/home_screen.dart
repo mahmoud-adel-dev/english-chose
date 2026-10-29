@@ -259,20 +259,33 @@ class HomeScreen extends StatelessWidget {
                   const SizedBox(height: 14),
                   LayoutBuilder(
                     builder: (context, constraints) {
-                      final isWide = constraints.maxWidth > 500;
+                      final isWide = constraints.maxWidth > 650;
+                      final isMedium = constraints.maxWidth > 420;
                       return GridView.count(
-                        crossAxisCount: isWide ? 4 : 2,
+                        crossAxisCount: isWide ? 5 : (isMedium ? 3 : 2),
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
                         crossAxisSpacing: 12,
                         mainAxisSpacing: 12,
-                        childAspectRatio: isWide ? 1.3 : 1.25,
+                        childAspectRatio: isWide ? 1.25 : (isMedium ? 1.2 : 1.25),
                         children: [
                           ScoreCard(
                             title: 'Overall Score',
                             score: profile.overallScore,
                             icon: Icons.auto_awesome,
                             color: AppTheme.primaryColor,
+                          ),
+                          ScoreCard(
+                            title: 'Pronunciation',
+                            score: profile.pronunciationScore,
+                            icon: Icons.hearing_rounded,
+                            color: const Color(0xFF8B5CF6),
+                          ),
+                          ScoreCard(
+                            title: 'Fluency',
+                            score: profile.fluencyScore,
+                            icon: Icons.record_voice_over,
+                            color: const Color(0xFFD97706),
                           ),
                           ScoreCard(
                             title: 'Grammar',
@@ -285,12 +298,6 @@ class HomeScreen extends StatelessWidget {
                             score: profile.vocabularyScore,
                             icon: Icons.menu_book,
                             color: const Color(0xFF059669),
-                          ),
-                          ScoreCard(
-                            title: 'Fluency',
-                            score: profile.fluencyScore,
-                            icon: Icons.record_voice_over,
-                            color: const Color(0xFFD97706),
                           ),
                         ],
                       );

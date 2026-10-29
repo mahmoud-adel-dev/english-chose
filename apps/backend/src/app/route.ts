@@ -1,1 +1,2 @@
-export { GET, runtime } from "./api/health/route";
+export const runtime = "nodejs";
+export { GET } from "./api/health/route";

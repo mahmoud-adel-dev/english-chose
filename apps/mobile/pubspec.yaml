@@ -38,6 +38,12 @@ dependencies:
   shared_preferences: ^2.5.6
   provider: ^6.1.5+1
 
+  # Audio: Text-to-Speech & Speech-to-Text for language coaching
+  flutter_tts: ^4.2.0
+  speech_to_text: ^7.0.0
+  permission_handler: ^11.3.1
+  just_audio: ^0.9.42
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

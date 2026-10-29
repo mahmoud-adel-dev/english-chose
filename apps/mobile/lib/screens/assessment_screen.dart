@@ -3,6 +3,9 @@ import 'package:provider/provider.dart';
 import '../config/theme.dart';
 import '../providers/app_provider.dart';
 import '../widgets/level_badge.dart';
+import '../services/tts_service.dart';
+import '../services/stt_service.dart';
+import '../widgets/english_answer_formatter.dart';
 
 class AssessmentScreen extends StatefulWidget {
   final VoidCallback onFinish;
@@ -13,12 +16,97 @@ class AssessmentScreen extends StatefulWidget {
   State<AssessmentScreen> createState() => _AssessmentScreenState();
 }
 
-class _AssessmentScreenState extends State<AssessmentScreen> {
+class _AssessmentScreenState extends State<AssessmentScreen>
+    with TickerProviderStateMixin {
   final _answerController = TextEditingController();
+  final TtsService _tts = TtsService();
+  final SttService _stt = SttService();
+
+  bool _isTtsSpeaking = false;
+  bool _isSttListening = false;
+  String _liveTranscript = '';
+  double _soundLevel = 0.0;
+  bool _showTextInput = false;
+  bool _autoPlayTts = true;
+
+  late AnimationController _micPulseController;
+  late AnimationController _speakerPulseController;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _micPulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
+
+    _speakerPulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+
+    _initAudioServices();
+  }
+
+  Future<void> _initAudioServices() async {
+    await _tts.initialize();
+    _tts.onStart = () {
+      if (mounted) setState(() => _isTtsSpeaking = true);
+      _speakerPulseController.repeat(reverse: true);
+    };
+    _tts.onComplete = () {
+      if (mounted) setState(() => _isTtsSpeaking = false);
+      _speakerPulseController.stop();
+      _speakerPulseController.reset();
+    };
+    _tts.onError = () {
+      if (mounted) setState(() => _isTtsSpeaking = false);
+      _speakerPulseController.stop();
+    };
+
+    await _stt.initialize();
+    _stt.onResult = (text) {
+      if (mounted) {
+        setState(() => _liveTranscript = text);
+        _answerController.text = text;
+      }
+    };
+    _stt.onSoundLevel = (level) {
+      if (mounted) setState(() => _soundLevel = level);
+    };
+    _stt.onListeningStarted = () {
+      if (mounted) {
+        setState(() => _isSttListening = true);
+        _micPulseController.repeat(reverse: true);
+      }
+    };
+    _stt.onListeningStopped = () {
+      if (mounted) {
+        setState(() => _isSttListening = false);
+        _micPulseController.stop();
+        _micPulseController.reset();
+      }
+    };
+    _stt.onError = (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('🎤 Microphone error: $error'),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+      }
+    };
+  }
 
   @override
   void dispose() {
     _answerController.dispose();
+    _tts.dispose();
+    _stt.dispose();
+    _micPulseController.dispose();
+    _speakerPulseController.dispose();
     super.dispose();
   }
 
@@ -31,6 +119,23 @@ class _AssessmentScreenState extends State<AssessmentScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('CEFR Placement Test'),
+        actions: [
+          if (item != null)
+            IconButton(
+              tooltip: _autoPlayTts ? 'Auto-read ON' : 'Auto-read OFF',
+              icon: Icon(
+                _autoPlayTts
+                    ? Icons.volume_up_rounded
+                    : Icons.volume_off_rounded,
+                color: _autoPlayTts
+                    ? AppTheme.primaryColor
+                    : const Color(0xFF94A3B8),
+              ),
+              onPressed: () {
+                setState(() => _autoPlayTts = !_autoPlayTts);
+              },
+            ),
+        ],
       ),
       body: Center(
         child: ConstrainedBox(
@@ -51,6 +156,13 @@ class _AssessmentScreenState extends State<AssessmentScreen> {
 
     if (item == null) {
       return _buildIntroView(provider);
+    }
+
+    // Auto-read prompt if configured
+    if (_autoPlayTts && !_isTtsSpeaking && !_isSttListening) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _tts.speak(item.promptText);
+      });
     }
 
     return _buildQuestionView(provider, item);
@@ -85,13 +197,25 @@ class _AssessmentScreenState extends State<AssessmentScreen> {
             ),
             const SizedBox(height: 12),
             const Text(
-              'Take a 6-question adaptive assessment to accurately diagnose your Common European Framework of Reference (CEFR) English level (A1 to C2).',
+              'Take a 6-question adaptive assessment to accurately diagnose your English speaking, listening, and grammar proficiency (A1 to C2).',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 14,
                 color: Color(0xFF64748B),
                 height: 1.5,
               ),
+            ),
+            const SizedBox(height: 20),
+            // Audio badges
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _buildBadge(Icons.volume_up, 'Listen to Prompts'),
+                _buildBadge(Icons.mic, 'Speak Your Answers'),
+                _buildBadge(Icons.auto_awesome, 'Instant Diagnosis'),
+              ],
             ),
             const SizedBox(height: 24),
             Row(
@@ -105,21 +229,65 @@ class _AssessmentScreenState extends State<AssessmentScreen> {
             ),
             const SizedBox(height: 32),
             ElevatedButton.icon(
-              onPressed: provider.isLoading ? null : () => provider.startAssessment(),
+              onPressed: provider.isLoading
+                  ? null
+                  : () async {
+                      final success = await provider.startAssessment();
+                      if (!success && mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              provider.errorMessage ??
+                                  'Failed to start placement test. Check your connection.',
+                            ),
+                            backgroundColor: AppTheme.errorColor,
+                          ),
+                        );
+                      }
+                    },
               icon: provider.isLoading
                   ? const SizedBox(
                       width: 20,
                       height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white),
                     )
                   : const Icon(Icons.play_arrow_rounded),
-              label: Text(provider.isLoading ? 'Preparing Test...' : 'Start Placement Test'),
+              label: Text(provider.isLoading
+                  ? 'Preparing Test...'
+                  : 'Start Placement Test'),
               style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildBadge(IconData icon, String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppTheme.accentColor.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: AppTheme.accentColor),
+          const SizedBox(width: 4),
+          Text(
+            text,
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.accentColor,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -139,7 +307,10 @@ class _AssessmentScreenState extends State<AssessmentScreen> {
                 color: Color(0xFF334155),
               ),
             ),
-            LevelBadge(level: item.targetLevel),
+            const Text(
+              'Adaptive difficulty',
+              style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+            ),
           ],
         ),
         const SizedBox(height: 12),
@@ -148,25 +319,64 @@ class _AssessmentScreenState extends State<AssessmentScreen> {
           child: LinearProgressIndicator(
             value: item.itemNumber / item.totalItems,
             backgroundColor: const Color(0xFFE2E8F0),
-            valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+            valueColor:
+                const AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
             minHeight: 8,
           ),
         ),
         const SizedBox(height: 24),
 
+        // Prompt Card
         Card(
           child: Padding(
             padding: const EdgeInsets.all(24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Prompt:',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF64748B),
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Prompt:',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF64748B),
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        IconButton(
+                          tooltip: 'Listen to prompt',
+                          icon: Icon(
+                            _isTtsSpeaking
+                                ? Icons.stop_circle_rounded
+                                : Icons.volume_up_rounded,
+                            color: AppTheme.primaryColor,
+                            size: 22,
+                          ),
+                          onPressed: () {
+                            if (_isTtsSpeaking) {
+                              _tts.stop();
+                            } else {
+                              _tts.speak(item.promptText);
+                            }
+                          },
+                        ),
+                        IconButton(
+                          tooltip: 'Listen slowly',
+                          icon: const Icon(
+                            Icons.slow_motion_video_rounded,
+                            color: AppTheme.primaryColor,
+                            size: 20,
+                          ),
+                          onPressed: () {
+                            _tts.speakAtSpeed(item.promptText, 0.25);
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -179,22 +389,63 @@ class _AssessmentScreenState extends State<AssessmentScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                const Text(
-                  'Your Answer:',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF64748B),
-                  ),
+
+                // Answer Section
+                Row(
+                  children: [
+                    const Text(
+                      'Your Answer:',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF64748B),
+                      ),
+                    ),
+                    const Spacer(),
+                    SegmentedButton<bool>(
+                      segments: const [
+                        ButtonSegment<bool>(
+                          value: false,
+                          icon: Icon(Icons.mic, size: 16),
+                          label: Text('Speak', style: TextStyle(fontSize: 12)),
+                        ),
+                        ButtonSegment<bool>(
+                          value: true,
+                          icon: Icon(Icons.keyboard, size: 16),
+                          label: Text('Type', style: TextStyle(fontSize: 12)),
+                        ),
+                      ],
+                      selected: {_showTextInput},
+                      onSelectionChanged: (value) {
+                        setState(() => _showTextInput = value.first);
+                        if (!value.first) _tts.stop();
+                      },
+                      style: ButtonStyle(
+                        visualDensity: VisualDensity.compact,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: _answerController,
-                  maxLines: 5,
-                  decoration: const InputDecoration(
-                    hintText: 'Answer in full sentences to demonstrate your range...',
+                const SizedBox(height: 12),
+
+                if (!_showTextInput) ...[
+                  // Voice Recording UI
+                  _buildVoiceInput(),
+                ] else ...[
+                  // Text Field
+                  TextField(
+                    controller: _answerController,
+                    maxLines: 5,
+                    inputFormatters: [englishAnswerFormatter],
+                    decoration: const InputDecoration(
+                      hintText:
+                          'Answer in English using full sentences...',
+                      helperText: 'English letters only. Arabic letters are not accepted.',
+                    ),
                   ),
-                ),
+                ],
+
                 const SizedBox(height: 20),
                 Align(
                   alignment: Alignment.centerRight,
@@ -204,10 +455,12 @@ class _AssessmentScreenState extends State<AssessmentScreen> {
                         ? const SizedBox(
                             width: 18,
                             height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: Colors.white),
                           )
                         : const Icon(Icons.arrow_forward_rounded),
-                    label: Text(provider.isLoading ? 'Submitting...' : 'Next Question'),
+                    label: Text(
+                        provider.isLoading ? 'Submitting...' : 'Next Question'),
                   ),
                 ),
               ],
@@ -218,12 +471,195 @@ class _AssessmentScreenState extends State<AssessmentScreen> {
     );
   }
 
+  Widget _buildVoiceInput() {
+    return Column(
+      children: [
+        if (_liveTranscript.isNotEmpty || _isSttListening) ...[
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: _isSttListening
+                    ? AppTheme.primaryColor.withValues(alpha: 0.5)
+                    : const Color(0xFFE2E8F0),
+                width: _isSttListening ? 2 : 1,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    if (_isSttListening) ...[
+                      _buildSoundLevelIndicator(),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'Listening...',
+                        style: TextStyle(
+                          color: AppTheme.primaryColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ] else ...[
+                      const Icon(Icons.record_voice_over,
+                          size: 14, color: Color(0xFF94A3B8)),
+                      const SizedBox(width: 6),
+                      const Text(
+                        'Your spoken response:',
+                        style: TextStyle(
+                          color: Color(0xFF94A3B8),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _liveTranscript.isEmpty
+                      ? 'Speak your answer clearly...'
+                      : _liveTranscript,
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: _liveTranscript.isEmpty
+                        ? const Color(0xFFCBD5E1)
+                        : const Color(0xFF0F172A),
+                    fontWeight: FontWeight.w500,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+
+        // Mic Button
+        AnimatedBuilder(
+          animation: _micPulseController,
+          builder: (context, child) {
+            final scale =
+                _isSttListening ? 1.0 + (_micPulseController.value * 0.1) : 1.0;
+            return Transform.scale(
+              scale: scale,
+              child: GestureDetector(
+                onTap: () => _toggleMicrophone(),
+                child: Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: _isSttListening
+                        ? AppTheme.errorColor
+                        : AppTheme.primaryColor,
+                    boxShadow: [
+                      BoxShadow(
+                        color: (_isSttListening
+                                ? AppTheme.errorColor
+                                : AppTheme.primaryColor)
+                            .withValues(alpha: 0.3),
+                        blurRadius: _isSttListening ? 18 : 8,
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    _isSttListening ? Icons.stop_rounded : Icons.mic_rounded,
+                    color: Colors.white,
+                    size: 32,
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 8),
+        Text(
+          _isSttListening
+              ? 'Tap to stop recording'
+              : 'Tap to speak your response',
+          style: const TextStyle(
+            color: Color(0xFF64748B),
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSoundLevelIndicator() {
+    final normalized = ((_soundLevel + 2) / 12).clamp(0.0, 1.0);
+    return SizedBox(
+      width: 36,
+      height: 12,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: List.generate(4, (i) {
+          final threshold = (i + 1) / 4;
+          return Container(
+            width: 3.5,
+            height: normalized >= threshold ? 12 : 5,
+            decoration: BoxDecoration(
+              color: normalized >= threshold
+                  ? AppTheme.primaryColor
+                  : const Color(0xFFCBD5E1),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
+  Future<void> _toggleMicrophone() async {
+    if (_isTtsSpeaking) await _tts.stop();
+
+    if (_isSttListening) {
+      final transcript = await _stt.stopListening();
+      setState(() {
+        _liveTranscript = transcript;
+        _answerController.text = transcript;
+      });
+    } else {
+      setState(() {
+        _liveTranscript = '';
+        _answerController.clear();
+      });
+
+      final started = await _stt.startListening();
+      if (!started && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              _stt.lastError ?? 'Could not access microphone.',
+            ),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+      }
+    }
+  }
+
   void _submit(AppProvider provider) async {
     final text = _answerController.text.trim();
-    if (text.isEmpty) return;
+    if (text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please speak or type your answer before proceeding.'),
+          backgroundColor: AppTheme.warningColor,
+        ),
+      );
+      return;
+    }
+    _tts.stop();
     final success = await provider.submitAssessmentAnswer(text);
     if (success) {
       _answerController.clear();
+      setState(() => _liveTranscript = '');
     } else if (mounted && provider.errorMessage != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -252,7 +688,8 @@ class _AssessmentScreenState extends State<AssessmentScreen> {
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: AppTheme.getLevelColor(result.assessedLevel).withValues(alpha: 0.12),
+                color: AppTheme.getLevelColor(result.assessedLevel)
+                    .withValues(alpha: 0.12),
                 shape: BoxShape.circle,
               ),
               child: Text(
@@ -302,7 +739,10 @@ class _AssessmentScreenState extends State<AssessmentScreen> {
             ),
             const SizedBox(height: 32),
             ElevatedButton.icon(
-              onPressed: widget.onFinish,
+              onPressed: () {
+                _tts.stop();
+                widget.onFinish();
+              },
               icon: const Icon(Icons.home_rounded),
               label: const Text('Back to Home Dashboard'),
             ),
@@ -312,4 +752,3 @@ class _AssessmentScreenState extends State<AssessmentScreen> {
     );
   }
 }
-
