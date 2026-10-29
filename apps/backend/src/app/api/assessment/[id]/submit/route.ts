@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { authenticateRequest, successResponse, errorResponse } from "../../../_helpers";
 import { AssessmentItemDto, AssessmentResultDto, CefrLevel } from "@english-coach/contracts";
+import { AiTaskRouter } from "@/lib/ai/task-router";
+import { AiTaskType } from "@prisma/client";
 
 export async function POST(
   request: Request,
@@ -61,15 +63,73 @@ export async function POST(
       return errorResponse("NOT_FOUND", "No active item found for assessment", 404);
     }
 
-    // Heuristic / length-based quick evaluation for placement test items
-    const wordCount = transcript.split(/\s+/).length;
-    let evalScore = Math.min(95, Math.max(50, 60 + wordCount * 2));
+    // Real AI Evaluation via AiTaskRouter (Gemini)
+    let evalScore = 0;
+    let feedbackJson: any = null;
+
+    try {
+      const aiResponse = await AiTaskRouter.executeCompletion(
+        AiTaskType.ANSWER_EVALUATION,
+        {
+          systemPrompt: `You are an expert Cambridge English CEFR examiner.
+Evaluate the learner's response strictly.
+CRITICAL RULES:
+- If the response is nonsense, gibberish (e.g. repeated letters like 'jhhhh', random typing, repeated dots, or no actual English words), the score MUST BE 0.
+- If the response is off-topic or fails to answer the prompt, score between 0 and 20.
+- If the response is in English but has poor grammar/vocabulary, score between 20 and 50.
+- Score 50-70 for acceptable basic English matching A2/B1.
+- Score 70-100 for fluent, natural English with rich grammar and vocabulary.
+
+Return ONLY a valid JSON object:
+{
+  "isMeaningAccurate": boolean,
+  "overallScore": number (0-100),
+  "grammarScore": number (0-100),
+  "vocabularyScore": number (0-100),
+  "fluencyScore": number (0-100),
+  "explanation": string
+}`,
+          userPrompt: `Target Level: ${currentItem.targetLevel}
+Prompt: "${currentItem.promptText}"
+Learner's Submitted Answer: "${transcript}"`,
+          temperature: 0.1,
+        },
+        { userId: auth.userId }
+      );
+
+      if (aiResponse.parsedJson && typeof aiResponse.parsedJson === "object") {
+        const parsed = aiResponse.parsedJson as any;
+        evalScore = Number(parsed.overallScore ?? parsed.scores?.overall ?? 0);
+        feedbackJson = parsed;
+      } else {
+        const text = aiResponse.content.trim();
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          evalScore = Number(parsed.overallScore ?? parsed.scores?.overall ?? 0);
+          feedbackJson = parsed;
+        }
+      }
+    } catch (e) {
+      console.warn("AI assessment evaluation fallback triggered:", e);
+      // Fallback heuristic: check for gibberish
+      const clean = transcript.replace(/[^a-zA-Z\s]/g, "").trim();
+      const words = clean.split(/\s+/).filter((w: string) => w.length > 1);
+      // Check for repeated characters like 'hhhhhh'
+      const hasGibberish = /(.)\1{4,}/.test(transcript);
+      if (hasGibberish || words.length < 2) {
+        evalScore = 0;
+      } else {
+        evalScore = Math.min(80, Math.max(20, words.length * 8));
+      }
+    }
 
     await prisma.assessmentItem.update({
       where: { id: currentItem.id },
       data: {
         transcript,
         evalScore,
+        feedbackJson,
       },
     });
 
@@ -117,14 +177,14 @@ export async function POST(
         where: { assessmentId: assessment.id },
       });
 
-      const totalScore = allItems.reduce((acc, curr) => acc + (curr.evalScore || 70), 0);
+      const totalScore = allItems.reduce((acc, curr) => acc + (curr.evalScore ?? 0), 0);
       const avgScore = Math.round(totalScore / (allItems.length || 1));
 
-      let determinedLevel: CefrLevel = "A2";
+      let determinedLevel: CefrLevel = "A1";
       if (avgScore >= 90) determinedLevel = "C1";
-      else if (avgScore >= 80) determinedLevel = "B2";
-      else if (avgScore >= 70) determinedLevel = "B1";
-      else if (avgScore >= 60) determinedLevel = "A2";
+      else if (avgScore >= 75) determinedLevel = "B2";
+      else if (avgScore >= 60) determinedLevel = "B1";
+      else if (avgScore >= 40) determinedLevel = "A2";
       else determinedLevel = "A1";
 
       const completedAt = new Date();
