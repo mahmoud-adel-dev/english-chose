@@ -224,6 +224,13 @@ class _AssessmentScreenState extends State<AssessmentScreen> {
     final success = await provider.submitAssessmentAnswer(text);
     if (success) {
       _answerController.clear();
+    } else if (mounted && provider.errorMessage != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(provider.errorMessage!),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
     }
   }
 

@@ -91,14 +91,14 @@ export async function POST(
 
       const nextItem = await prisma.assessmentItem.create({
         data: {
-          assessmentId,
+          assessmentId: assessment.id,
           targetLevel: nextPrompt.level as any,
           promptText: nextPrompt.text,
         },
       });
 
       await prisma.cefrAssessment.update({
-        where: { id: assessmentId },
+        where: { id: assessment.id },
         data: { currentQuestion: nextQuestionNum },
       });
 
@@ -114,7 +114,7 @@ export async function POST(
     } else {
       // Completed assessment!
       const allItems = await prisma.assessmentItem.findMany({
-        where: { assessmentId },
+        where: { assessmentId: assessment.id },
       });
 
       const totalScore = allItems.reduce((acc, curr) => acc + (curr.evalScore || 70), 0);
@@ -130,7 +130,7 @@ export async function POST(
       const completedAt = new Date();
 
       await prisma.cefrAssessment.update({
-        where: { id: assessmentId },
+        where: { id: assessment.id },
         data: {
           status: "COMPLETED",
           assessedLevel: determinedLevel,
@@ -152,7 +152,7 @@ export async function POST(
       });
 
       const resultDto: AssessmentResultDto = {
-        assessmentId,
+        assessmentId: assessment.id,
         assessedLevel: determinedLevel,
         overallScore: avgScore,
         skillBreakdown: {
