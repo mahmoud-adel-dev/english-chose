@@ -4,8 +4,21 @@ import '../config/theme.dart';
 import '../providers/app_provider.dart';
 import '../widgets/level_badge.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<AppProvider>().refreshProfile();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
