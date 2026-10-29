@@ -44,3 +44,5 @@ Thumbs.db
 apps/mobile/build/
 apps/mobile/.flutter-plugins
 apps/mobile/.flutter-plugins-dependencies
+.neon
+*.ps1

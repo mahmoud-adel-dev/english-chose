@@ -10,6 +10,6 @@ export const prisma =
     log: process.env.NODE_ENV === "development" ? ["warn", "error"] : ["error"],
   });
 
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma;
-}
+// Always cache the client on globalThis to prevent connection pool exhaustion
+// across warm serverless lambda invocations on Vercel with Neon PostgreSQL.
+globalForPrisma.prisma = prisma;

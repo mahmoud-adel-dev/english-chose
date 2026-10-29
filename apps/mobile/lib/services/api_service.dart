@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -6,8 +7,14 @@ class ApiException implements Exception {
   final String code;
   final String message;
   final dynamic details;
+  final int? statusCode;
 
-  ApiException({required this.code, required this.message, this.details});
+  ApiException({
+    required this.code,
+    required this.message,
+    this.details,
+    this.statusCode,
+  });
 
   @override
   String toString() => message;
@@ -15,6 +22,7 @@ class ApiException implements Exception {
 
 class ApiService {
   static const String tokenKey = 'auth_token';
+  static const Duration requestTimeout = Duration(seconds: 30);
 
   static Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
@@ -46,41 +54,92 @@ class ApiService {
   static Future<dynamic> get(String url) async {
     try {
       final headers = await _headers();
-      final res = await http.get(Uri.parse(url), headers: headers);
+      final res = await http
+          .get(Uri.parse(url), headers: headers)
+          .timeout(requestTimeout);
       return _handleResponse(res);
+    } on TimeoutException {
+      throw ApiException(
+        code: 'TIMEOUT',
+        message: 'Connection timed out. Please check your network and try again.',
+      );
     } catch (e) {
       if (e is ApiException) rethrow;
-      throw ApiException(code: 'NETWORK_ERROR', message: 'Failed to connect to server: $e');
+      throw ApiException(
+        code: 'NETWORK_ERROR',
+        message: 'Failed to connect to server: $e',
+      );
     }
   }
 
   static Future<dynamic> post(String url, {Map<String, dynamic>? body}) async {
     try {
       final headers = await _headers();
-      final res = await http.post(
-        Uri.parse(url),
-        headers: headers,
-        body: body != null ? jsonEncode(body) : null,
-      );
+      final res = await http
+          .post(
+            Uri.parse(url),
+            headers: headers,
+            body: body != null ? jsonEncode(body) : null,
+          )
+          .timeout(requestTimeout);
       return _handleResponse(res);
+    } on TimeoutException {
+      throw ApiException(
+        code: 'TIMEOUT',
+        message: 'Connection timed out. Please check your network and try again.',
+      );
     } catch (e) {
       if (e is ApiException) rethrow;
-      throw ApiException(code: 'NETWORK_ERROR', message: 'Failed to connect to server: $e');
+      throw ApiException(
+        code: 'NETWORK_ERROR',
+        message: 'Failed to connect to server: $e',
+      );
     }
   }
 
   static Future<dynamic> put(String url, {Map<String, dynamic>? body}) async {
     try {
       final headers = await _headers();
-      final res = await http.put(
-        Uri.parse(url),
-        headers: headers,
-        body: body != null ? jsonEncode(body) : null,
-      );
+      final res = await http
+          .put(
+            Uri.parse(url),
+            headers: headers,
+            body: body != null ? jsonEncode(body) : null,
+          )
+          .timeout(requestTimeout);
       return _handleResponse(res);
+    } on TimeoutException {
+      throw ApiException(
+        code: 'TIMEOUT',
+        message: 'Connection timed out. Please check your network and try again.',
+      );
     } catch (e) {
       if (e is ApiException) rethrow;
-      throw ApiException(code: 'NETWORK_ERROR', message: 'Failed to connect to server: $e');
+      throw ApiException(
+        code: 'NETWORK_ERROR',
+        message: 'Failed to connect to server: $e',
+      );
+    }
+  }
+
+  static Future<dynamic> delete(String url) async {
+    try {
+      final headers = await _headers();
+      final res = await http
+          .delete(Uri.parse(url), headers: headers)
+          .timeout(requestTimeout);
+      return _handleResponse(res);
+    } on TimeoutException {
+      throw ApiException(
+        code: 'TIMEOUT',
+        message: 'Connection timed out. Please check your network and try again.',
+      );
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException(
+        code: 'NETWORK_ERROR',
+        message: 'Failed to connect to server: $e',
+      );
     }
   }
 
@@ -91,7 +150,8 @@ class ApiService {
     } catch (_) {
       throw ApiException(
         code: 'PARSE_ERROR',
-        message: 'Invalid response from server (${response.statusCode})',
+        message: 'Server returned unexpected response (${response.statusCode})',
+        statusCode: response.statusCode,
       );
     }
 
@@ -102,13 +162,21 @@ class ApiService {
         final err = jsonBody['error'] ?? {};
         throw ApiException(
           code: err['code'] ?? 'UNKNOWN_ERROR',
-          message: err['message'] ?? 'An error occurred',
+          message: err['message'] ?? 'An unexpected error occurred',
           details: err['details'],
+          statusCode: response.statusCode,
         );
       }
+    }
+
+    if (response.statusCode >= 400) {
+      throw ApiException(
+        code: 'HTTP_${response.statusCode}',
+        message: 'Request failed with status ${response.statusCode}',
+        statusCode: response.statusCode,
+      );
     }
 
     return jsonBody;
   }
 }
-

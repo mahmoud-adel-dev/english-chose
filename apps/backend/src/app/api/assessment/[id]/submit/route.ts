@@ -20,12 +20,29 @@ export async function POST(
       return errorResponse("VALIDATION_ERROR", "Transcript cannot be empty", 400);
     }
 
-    const assessment = await prisma.cefrAssessment.findUnique({
+    let assessment = await prisma.cefrAssessment.findUnique({
       where: { id: assessmentId },
       include: {
         items: { orderBy: { createdAt: "asc" } },
       },
     });
+
+    // Support submitting by AssessmentItem ID as passed by the client
+    let targetItemId: string | null = null;
+    if (!assessment) {
+      const item = await prisma.assessmentItem.findUnique({
+        where: { id: assessmentId },
+        include: {
+          assessment: {
+            include: { items: { orderBy: { createdAt: "asc" } } },
+          },
+        },
+      });
+      if (item) {
+        assessment = item.assessment;
+        targetItemId = item.id;
+      }
+    }
 
     if (!assessment || assessment.userId !== auth.userId) {
       return errorResponse("NOT_FOUND", "Assessment not found", 404);
@@ -35,8 +52,10 @@ export async function POST(
       return errorResponse("INVALID_STATE", "Assessment is already completed", 400);
     }
 
-    // Find current unanswered item or the last item
-    const currentItem = assessment.items.find((it) => it.transcript === null) || assessment.items[assessment.items.length - 1];
+    // Find current unanswered item or the targeted item
+    const currentItem = targetItemId
+      ? assessment.items.find((it) => it.id === targetItemId) || assessment.items.find((it) => it.transcript === null) || assessment.items[assessment.items.length - 1]
+      : assessment.items.find((it) => it.transcript === null) || assessment.items[assessment.items.length - 1];
 
     if (!currentItem) {
       return errorResponse("NOT_FOUND", "No active item found for assessment", 404);
