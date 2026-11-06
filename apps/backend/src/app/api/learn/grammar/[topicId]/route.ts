@@ -20,3 +20,4 @@ export async function GET(request: Request, context: Context) {
 
   return successResponse({ topic });
 }
+

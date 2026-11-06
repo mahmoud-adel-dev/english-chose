@@ -450,3 +450,4 @@ export function getGrammarTopicsByLevel(level?: CefrLevel): GrammarLessonTopic[]
 export function getGrammarTopicById(id: string): GrammarLessonTopic | undefined {
   return GRAMMAR_CATALOG.find((t) => t.id === id);
 }
+

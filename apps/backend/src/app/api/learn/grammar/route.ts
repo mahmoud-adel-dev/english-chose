@@ -18,3 +18,4 @@ export async function GET(request: Request) {
 
   return successResponse({ topics: GRAMMAR_CATALOG });
 }
+
