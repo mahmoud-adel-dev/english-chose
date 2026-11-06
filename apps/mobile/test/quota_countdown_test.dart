@@ -6,8 +6,14 @@ void main() {
     final now = DateTime.parse('2026-11-06T20:00:00Z');
     final reset = DateTime.parse('2026-11-07T00:00:05Z');
 
-    expect(quotaResetRemaining(reset.toIso8601String(), now), const Duration(hours: 4, seconds: 5));
-    expect(formatQuotaCountdown(const Duration(hours: 4, seconds: 5)), '04:00:05');
+    expect(
+      quotaResetRemaining(reset.toIso8601String(), now),
+      const Duration(hours: 4, seconds: 5),
+    );
+    expect(
+      formatQuotaCountdown(const Duration(hours: 4, seconds: 5)),
+      '04:00:05',
+    );
   });
 
   test('clamps an expired reset to zero', () {

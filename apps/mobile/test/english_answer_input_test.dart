@@ -13,6 +13,9 @@ void main() {
 
   test('keeps normal English punctuation and contractions', () {
     const value = TextEditingValue(text: "I don't know, but I'll try!");
-    expect(englishAnswerFormatter.formatEditUpdate(TextEditingValue.empty, value), value);
+    expect(
+      englishAnswerFormatter.formatEditUpdate(TextEditingValue.empty, value),
+      value,
+    );
   });
 }

@@ -8,6 +8,7 @@ import 'screens/session_screen.dart';
 import 'screens/assessment_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/saved_words_screen.dart';
+import 'screens/learn/learn_hub_screen.dart';
 import 'screens/admin/admin_dashboard_screen.dart';
 
 void main() {
@@ -130,12 +131,13 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> {
         onOpenAdmin: isAdmin
             ? () {
                 setState(() {
-                  _currentIndex = 4;
+                  _currentIndex = 5;
                 });
               }
             : null,
       ),
       const SessionScreen(),
+      const LearnHubScreen(),
       const SavedWordsScreen(),
       const ProfileScreen(),
       if (isAdmin) const AdminDashboardScreen(),
@@ -146,18 +148,14 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> {
     }
 
     return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: pages,
-      ),
+      body: IndexedStack(index: _currentIndex, children: pages),
       bottomNavigationBar: Container(
         decoration: const BoxDecoration(
-          border: Border(
-            top: BorderSide(color: Color(0xFFE2E8F0), width: 1),
-          ),
+          border: Border(top: BorderSide(color: Color(0xFFE2E8F0), width: 1)),
         ),
         child: BottomNavigationBar(
           currentIndex: _currentIndex,
+          type: BottomNavigationBarType.fixed,
           onTap: (index) {
             setState(() {
               _currentIndex = index;
@@ -166,8 +164,14 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> {
           backgroundColor: Colors.white,
           selectedItemColor: AppTheme.primaryColor,
           unselectedItemColor: const Color(0xFF94A3B8),
-          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
-          unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 12),
+          selectedLabelStyle: const TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 12,
+          ),
+          unselectedLabelStyle: const TextStyle(
+            fontWeight: FontWeight.w500,
+            fontSize: 12,
+          ),
           elevation: 0,
           items: [
             const BottomNavigationBarItem(
@@ -179,6 +183,11 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> {
               icon: Icon(Icons.psychology_outlined),
               activeIcon: Icon(Icons.psychology_rounded),
               label: 'Practice',
+            ),
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.school_outlined),
+              activeIcon: Icon(Icons.school_rounded),
+              label: 'Learn',
             ),
             const BottomNavigationBarItem(
               icon: Icon(Icons.bookmark_border_rounded),

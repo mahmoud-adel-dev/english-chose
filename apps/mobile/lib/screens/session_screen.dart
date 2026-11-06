@@ -6,6 +6,7 @@ import '../config/theme.dart';
 import '../widgets/english_answer_formatter.dart';
 import '../widgets/savable_text.dart';
 import '../widgets/save_word_dialog.dart';
+import '../widgets/quota_limit_notice.dart';
 import '../models/session.dart';
 import '../providers/app_provider.dart';
 import '../services/session_progress_store.dart';
@@ -74,7 +75,7 @@ class _SessionScreenState extends State<SessionScreen>
 
   Future<void> _restoreSessionProgress() async {
     final provider = context.read<AppProvider>();
-    await provider.fetchCurrentSession();
+    await Future.wait([provider.fetchCurrentSession(), provider.fetchQuota()]);
     if (!mounted) return;
 
     final session = provider.currentSession;
@@ -1818,6 +1819,10 @@ class _SessionScreenState extends State<SessionScreen>
   }
 
   Widget _buildNoActiveSession(AppProvider provider) {
+    final sessionsRemaining =
+        (provider.quota?['dailySessionsRemaining'] as num?)?.toInt();
+    final quotaExhausted = sessionsRemaining != null && sessionsRemaining <= 0;
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(36),
@@ -1872,13 +1877,26 @@ class _SessionScreenState extends State<SessionScreen>
             ),
             const SizedBox(height: 28),
 
+            if (quotaExhausted) ...[
+              QuotaLimitNotice(
+                resetsAtUtc: provider.quota?['resetsAtUtc']?.toString(),
+                onExpired: provider.fetchQuota,
+              ),
+              const SizedBox(height: 18),
+            ],
+
             // Start button with error handling
             ElevatedButton.icon(
-              onPressed: provider.isLoading
+              onPressed: provider.isLoading || quotaExhausted
                   ? null
                   : () async {
                       final success = await provider.startSession();
-                      if (!success && mounted) {
+                      final nowExhausted =
+                          ((provider.quota?['dailySessionsRemaining'] as num?)
+                                  ?.toInt() ??
+                              1) <=
+                          0;
+                      if (!success && mounted && !nowExhausted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Row(
@@ -1922,6 +1940,8 @@ class _SessionScreenState extends State<SessionScreen>
               label: Text(
                 provider.isLoading
                     ? 'Generating Exercises...'
+                    : quotaExhausted
+                    ? 'Daily Limit Reached'
                     : 'Start Session Now',
               ),
               style: ElevatedButton.styleFrom(

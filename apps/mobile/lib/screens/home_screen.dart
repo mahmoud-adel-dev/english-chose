@@ -41,10 +41,16 @@ class HomeScreen extends StatelessWidget {
           if (provider.isAdmin && onOpenAdmin != null)
             TextButton.icon(
               onPressed: onOpenAdmin,
-              icon: const Icon(Icons.admin_panel_settings_rounded, color: AppTheme.primaryColor),
+              icon: const Icon(
+                Icons.admin_panel_settings_rounded,
+                color: AppTheme.primaryColor,
+              ),
               label: const Text(
                 'Admin Panel',
-                style: TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: AppTheme.primaryColor,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           IconButton(
@@ -73,7 +79,9 @@ class HomeScreen extends StatelessWidget {
                   // Profile Header Banner
                   Card(
                     color: AppTheme.primaryColor,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
                     child: Padding(
                       padding: const EdgeInsets.all(24),
                       child: Column(
@@ -85,7 +93,9 @@ class HomeScreen extends StatelessWidget {
                                 radius: 28,
                                 backgroundColor: Colors.white,
                                 child: Text(
-                                  user.name.isNotEmpty ? user.name[0].toUpperCase() : 'U',
+                                  user.name.isNotEmpty
+                                      ? user.name[0].toUpperCase()
+                                      : 'U',
                                   style: const TextStyle(
                                     fontSize: 24,
                                     fontWeight: FontWeight.bold,
@@ -111,7 +121,9 @@ class HomeScreen extends StatelessWidget {
                                       user.email,
                                       style: TextStyle(
                                         fontSize: 13,
-                                        color: Colors.white.withValues(alpha: 0.8),
+                                        color: Colors.white.withValues(
+                                          alpha: 0.8,
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -119,7 +131,10 @@ class HomeScreen extends StatelessWidget {
                               ),
                               // Streak
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 8,
+                                ),
                                 decoration: BoxDecoration(
                                   color: Colors.white.withValues(alpha: 0.18),
                                   borderRadius: BorderRadius.circular(16),
@@ -127,7 +142,10 @@ class HomeScreen extends StatelessWidget {
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    const Text('🔥', style: TextStyle(fontSize: 18)),
+                                    const Text(
+                                      '🔥',
+                                      style: TextStyle(fontSize: 18),
+                                    ),
                                     const SizedBox(width: 6),
                                     Text(
                                       '${profile.dailyStreak} Days',
@@ -152,12 +170,18 @@ class HomeScreen extends StatelessWidget {
                                 children: [
                                   const Text(
                                     'Current Level: ',
-                                    style: TextStyle(color: Colors.white, fontSize: 14),
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 14,
+                                    ),
                                   ),
                                   LevelBadge(
                                     level: profile.currentLevel,
                                     fontSize: 13,
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 2,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -165,12 +189,18 @@ class HomeScreen extends StatelessWidget {
                                 children: [
                                   const Text(
                                     'Target Goal: ',
-                                    style: TextStyle(color: Colors.white70, fontSize: 13),
+                                    style: TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 13,
+                                    ),
                                   ),
                                   LevelBadge(
                                     level: profile.targetLevel,
                                     fontSize: 12,
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 2,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -185,7 +215,10 @@ class HomeScreen extends StatelessWidget {
                   // Quota Info Bar
                   if (quota != null) ...[
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xFFF1F5F9),
                         borderRadius: BorderRadius.circular(12),
@@ -198,12 +231,20 @@ class HomeScreen extends StatelessWidget {
                             Icons.chat_bubble_outline_rounded,
                             '${quota['dailyQuestionsRemaining'] ?? 0} Questions left',
                           ),
-                          Container(width: 1, height: 24, color: const Color(0xFFCBD5E1)),
+                          Container(
+                            width: 1,
+                            height: 24,
+                            color: const Color(0xFFCBD5E1),
+                          ),
                           _buildQuotaItem(
                             Icons.timer_outlined,
                             '${quota['dailySessionsRemaining'] ?? 0} Sessions left',
                           ),
-                          Container(width: 1, height: 24, color: const Color(0xFFCBD5E1)),
+                          Container(
+                            width: 1,
+                            height: 24,
+                            color: const Color(0xFFCBD5E1),
+                          ),
                           _buildQuotaItem(
                             Icons.verified_outlined,
                             'Tier: ${quota['tierName'] ?? 'FREE'}',
@@ -236,7 +277,10 @@ class HomeScreen extends StatelessWidget {
                           label: const Text('CEFR Test'),
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 18),
-                            side: const BorderSide(color: AppTheme.primaryColor, width: 1.5),
+                            side: const BorderSide(
+                              color: AppTheme.primaryColor,
+                              width: 1.5,
+                            ),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -267,7 +311,9 @@ class HomeScreen extends StatelessWidget {
                         physics: const NeverScrollableScrollPhysics(),
                         crossAxisSpacing: 12,
                         mainAxisSpacing: 12,
-                        childAspectRatio: isWide ? 1.3 : (isMedium ? 1.25 : 1.15),
+                        childAspectRatio: isWide
+                            ? 1.3
+                            : (isMedium ? 1.25 : 1.15),
                         children: [
                           ScoreCard(
                             title: 'Overall Score',
@@ -321,7 +367,10 @@ class HomeScreen extends StatelessWidget {
                       runSpacing: 8,
                       children: profile.recurringWeaknesses.map((w) {
                         return Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 8,
+                          ),
                           decoration: BoxDecoration(
                             color: const Color(0xFFFEF3C7),
                             borderRadius: BorderRadius.circular(20),
@@ -330,7 +379,11 @@ class HomeScreen extends StatelessWidget {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Icons.trending_up, size: 16, color: Color(0xFFD97706)),
+                              const Icon(
+                                Icons.trending_up,
+                                size: 16,
+                                color: Color(0xFFD97706),
+                              ),
                               const SizedBox(width: 6),
                               Text(
                                 w,
@@ -373,4 +426,3 @@ class HomeScreen extends StatelessWidget {
     );
   }
 }
-

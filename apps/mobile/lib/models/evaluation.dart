@@ -71,8 +71,11 @@ class EvaluationResultModel {
       fluencyScore: (scores['fluency'] as num?)?.toDouble() ?? 0.0,
       pronunciationScore: (scores['pronunciation'] as num?)?.toDouble() ?? 0.0,
       explanationMarkdown: json['explanationMarkdown'] ?? '',
-      identifiedErrors: (json['identifiedErrors'] as List<dynamic>?)
-              ?.map((e) => IdentifiedErrorModel.fromJson(e as Map<String, dynamic>))
+      identifiedErrors:
+          (json['identifiedErrors'] as List<dynamic>?)
+              ?.map(
+                (e) => IdentifiedErrorModel.fromJson(e as Map<String, dynamic>),
+              )
               .toList() ??
           [],
       retryEligible: json['retryEligible'] ?? true,
@@ -80,4 +83,3 @@ class EvaluationResultModel {
     );
   }
 }
-

@@ -39,6 +39,19 @@ class ApiConfig {
   static const String vocabulary = '$baseUrl/vocabulary';
   static String vocabularyItem(String id) => '$vocabulary/$id';
 
+  // Learn, Grammar & 50-Question Live Quiz
+  static const String learnGrammar = '$baseUrl/learn/grammar';
+  static String learnGrammarTopic(String topicId) => '$learnGrammar/$topicId';
+  static String learnQuiz({String? level, String? topicId}) {
+    final params = <String>[];
+    if (level != null) params.add('level=$level');
+    if (topicId != null) params.add('topicId=$topicId');
+    return params.isEmpty ? '$baseUrl/learn/quiz' : '$baseUrl/learn/quiz?${params.join('&')}';
+  }
+  static String learnTips({String? category}) =>
+      category != null ? '$baseUrl/learn/tips?category=$category' : '$baseUrl/learn/tips';
+  static const String learnExplain = '$baseUrl/learn/explain';
+
   // Admin & Governance Endpoints
   static const String adminAnalytics = '$baseUrl/admin/analytics';
   static const String adminProviders = '$baseUrl/admin/providers';
@@ -51,5 +64,9 @@ class ApiConfig {
   static const String adminModels = '$baseUrl/admin/models';
   static const String adminRoutings = '$baseUrl/admin/routings';
   static const String adminUsers = '$baseUrl/admin/users';
+  static const String adminQuotaTiers = '$baseUrl/admin/quota-tiers';
+  static String adminQuotaTier(String id) => '$adminQuotaTiers/$id';
+  static String adminUserQuotaTier(String userId) =>
+      '$adminUsers/$userId/quota-tier';
   static const String adminGoogleAuth = '$baseUrl/admin/auth/google';
 }

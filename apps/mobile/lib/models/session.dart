@@ -66,11 +66,13 @@ class DailySessionModel {
       questionsCount: (json['questionsCount'] as num?)?.toInt() ?? 0,
       durationSec: (json['durationSec'] as num?)?.toInt() ?? 0,
       createdAt: json['createdAt'] ?? '',
-      questions: (json['questions'] as List<dynamic>?)
-              ?.map((q) => SessionQuestionModel.fromJson(q as Map<String, dynamic>))
+      questions:
+          (json['questions'] as List<dynamic>?)
+              ?.map(
+                (q) => SessionQuestionModel.fromJson(q as Map<String, dynamic>),
+              )
               .toList() ??
           [],
     );
   }
 }
-

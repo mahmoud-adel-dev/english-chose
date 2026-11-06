@@ -3,7 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/widgets/quota_limit_notice.dart';
 
 void main() {
-  testWidgets('shows a clear renewal state instead of an error', (tester) async {
+  testWidgets('shows a clear renewal state instead of an error', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(

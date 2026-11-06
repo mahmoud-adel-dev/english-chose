@@ -60,14 +60,15 @@ class LearningProfileModel {
       grammarScore: (json['grammarScore'] as num?)?.toDouble() ?? 0.0,
       vocabularyScore: (json['vocabularyScore'] as num?)?.toDouble() ?? 0.0,
       fluencyScore: (json['fluencyScore'] as num?)?.toDouble() ?? 0.0,
-      pronunciationScore: (json['pronunciationScore'] as num?)?.toDouble() ?? 0.0,
+      pronunciationScore:
+          (json['pronunciationScore'] as num?)?.toDouble() ?? 0.0,
       dailyStreak: (json['dailyStreak'] as num?)?.toInt() ?? 0,
       lastTrainedDate: json['lastTrainedDate'],
-      recurringWeaknesses: (json['recurringWeaknesses'] as List<dynamic>?)
+      recurringWeaknesses:
+          (json['recurringWeaknesses'] as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??
           [],
     );
   }
 }
-

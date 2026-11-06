@@ -79,7 +79,8 @@ class ApiService {
       );
       throw ApiException(
         code: 'TIMEOUT',
-        message: 'Connection timed out. Please check your network and try again.',
+        message:
+            'Connection timed out. Please check your network and try again.',
       );
     } catch (e) {
       sw.stop();
@@ -104,11 +105,7 @@ class ApiService {
     try {
       final headers = await _headers();
       final res = await http
-          .post(
-            Uri.parse(url),
-            headers: headers,
-            body: bodyStr,
-          )
+          .post(Uri.parse(url), headers: headers, body: bodyStr)
           .timeout(requestTimeout);
       sw.stop();
       LogService().logResponse(
@@ -129,7 +126,8 @@ class ApiService {
       );
       throw ApiException(
         code: 'TIMEOUT',
-        message: 'Connection timed out. Please check your network and try again.',
+        message:
+            'Connection timed out. Please check your network and try again.',
       );
     } catch (e) {
       sw.stop();
@@ -154,11 +152,7 @@ class ApiService {
     try {
       final headers = await _headers();
       final res = await http
-          .put(
-            Uri.parse(url),
-            headers: headers,
-            body: bodyStr,
-          )
+          .put(Uri.parse(url), headers: headers, body: bodyStr)
           .timeout(requestTimeout);
       sw.stop();
       LogService().logResponse(
@@ -179,7 +173,8 @@ class ApiService {
       );
       throw ApiException(
         code: 'TIMEOUT',
-        message: 'Connection timed out. Please check your network and try again.',
+        message:
+            'Connection timed out. Please check your network and try again.',
       );
     } catch (e) {
       sw.stop();
@@ -224,7 +219,8 @@ class ApiService {
       );
       throw ApiException(
         code: 'TIMEOUT',
-        message: 'Connection timed out. Please check your network and try again.',
+        message:
+            'Connection timed out. Please check your network and try again.',
       );
     } catch (e) {
       sw.stop();

@@ -4,6 +4,7 @@ import '../../config/theme.dart';
 import '../../providers/app_provider.dart';
 import 'ai_providers_tab.dart';
 import 'google_auth_tab.dart';
+import 'quota_packages_tab.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -19,7 +20,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 5, vsync: this);
+    _tabController = TabController(length: 6, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<AppProvider>().fetchAdminData();
     });
@@ -64,6 +65,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
             Tab(icon: Icon(Icons.smart_toy_outlined), text: 'AI Models'),
             Tab(icon: Icon(Icons.alt_route_rounded), text: 'Task Routings'),
             Tab(icon: Icon(Icons.people_outline_rounded), text: 'Users'),
+            Tab(icon: Icon(Icons.inventory_2_outlined), text: 'Packages'),
             Tab(icon: Icon(Icons.login_rounded), text: 'Authentication'),
           ],
         ),
@@ -85,6 +87,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                 _buildModelsTab(provider),
                 _buildRoutingsTab(provider),
                 _buildUsersTab(provider),
+                QuotaPackagesTab(
+                  tiers: provider.adminQuotaTiers,
+                  onCreate: provider.createQuotaTier,
+                  onUpdate: provider.updateQuotaTier,
+                ),
                 GoogleAuthTab(
                   configuration: provider.adminGoogleAuthConfig,
                   onSave: provider.saveGoogleAuthConfig,
@@ -1054,19 +1061,46 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                                 ),
                               ],
                             ),
-                            subtitle: Text(
-                              u['email'] ?? '',
-                              style: const TextStyle(fontSize: 11),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  u['email'] ?? '',
+                                  style: const TextStyle(fontSize: 11),
+                                ),
+                                if (profile != null)
+                                  Text(
+                                    '${profile['currentLevel']} • ${profile['dailyStreak']} day streak',
+                                    style: const TextStyle(fontSize: 11),
+                                  ),
+                                if (isMobile) ...[
+                                  const SizedBox(height: 8),
+                                  UserQuotaTierSelector(
+                                    tiers: provider.adminQuotaTiers,
+                                    value: u['quotaTierId']?.toString(),
+                                    onChanged: (tierId) =>
+                                        provider.assignUserQuotaTier(
+                                          u['id'].toString(),
+                                          tierId,
+                                        ),
+                                  ),
+                                ],
+                              ],
                             ),
-                            trailing: profile != null
-                                ? Text(
-                                    '${profile['currentLevel']} • 🔥${profile['dailyStreak']}d',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 11,
+                            trailing: isMobile
+                                ? null
+                                : SizedBox(
+                                    width: 180,
+                                    child: UserQuotaTierSelector(
+                                      tiers: provider.adminQuotaTiers,
+                                      value: u['quotaTierId']?.toString(),
+                                      onChanged: (tierId) =>
+                                          provider.assignUserQuotaTier(
+                                            u['id'].toString(),
+                                            tierId,
+                                          ),
                                     ),
-                                  )
-                                : null,
+                                  ),
                           );
                         },
                       ),

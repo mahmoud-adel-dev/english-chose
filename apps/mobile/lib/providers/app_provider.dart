@@ -4,6 +4,7 @@ import '../models/user.dart';
 import '../models/session.dart';
 import '../models/evaluation.dart';
 import '../models/assessment.dart';
+import '../models/learn.dart';
 import '../services/api_service.dart';
 import '../services/google_sign_in_service.dart';
 
@@ -20,6 +21,12 @@ class AppProvider with ChangeNotifier {
   Map<String, dynamic>? _lastSessionSummary;
   Map<String, dynamic>? _googleAuthConfig;
 
+  // Learn module state
+  List<GrammarTopicModel> _grammarTopics = [];
+  List<LearningTipModel> _learningTips = [];
+  QuizModel? _activeQuiz;
+  bool _isLearnLoading = false;
+
   // Admin states
   Map<String, dynamic>? _adminAnalytics;
   List<dynamic> _adminProviderCatalog = [];
@@ -27,6 +34,7 @@ class AppProvider with ChangeNotifier {
   List<dynamic> _adminModels = [];
   List<dynamic> _adminRoutings = [];
   List<dynamic> _adminUsers = [];
+  List<dynamic> _adminQuotaTiers = [];
   Map<String, dynamic>? _adminGoogleAuthConfig;
   bool _isAdminLoading = false;
 
@@ -59,8 +67,15 @@ class AppProvider with ChangeNotifier {
   List<dynamic> get adminModels => _adminModels;
   List<dynamic> get adminRoutings => _adminRoutings;
   List<dynamic> get adminUsers => _adminUsers;
+  List<dynamic> get adminQuotaTiers => _adminQuotaTiers;
   Map<String, dynamic>? get adminGoogleAuthConfig => _adminGoogleAuthConfig;
   bool get isAdminLoading => _isAdminLoading;
+
+  // Learn module getters
+  List<GrammarTopicModel> get grammarTopics => _grammarTopics;
+  List<LearningTipModel> get learningTips => _learningTips;
+  QuizModel? get activeQuiz => _activeQuiz;
+  bool get isLearnLoading => _isLearnLoading;
 
   void clearError() {
     _errorMessage = null;
@@ -215,6 +230,7 @@ class AppProvider with ChangeNotifier {
     _adminModels = [];
     _adminRoutings = [];
     _adminUsers = [];
+    _adminQuotaTiers = [];
     _adminGoogleAuthConfig = null;
     notifyListeners();
   }
@@ -271,7 +287,12 @@ class AppProvider with ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _errorMessage = e.toString();
+      if (e is ApiException && e.code == 'QUOTA_EXCEEDED') {
+        await fetchQuota();
+        _errorMessage = null;
+      } else {
+        _errorMessage = e.toString();
+      }
       _isLoading = false;
       notifyListeners();
       return false;
@@ -501,6 +522,9 @@ class AppProvider with ChangeNotifier {
       final usersData = await ApiService.get(ApiConfig.adminUsers);
       _adminUsers = usersData as List<dynamic>;
 
+      final quotaTiersData = await ApiService.get(ApiConfig.adminQuotaTiers);
+      _adminQuotaTiers = quotaTiersData as List<dynamic>;
+
       final googleAuthData = await ApiService.get(ApiConfig.adminGoogleAuth);
       _adminGoogleAuthConfig = Map<String, dynamic>.from(googleAuthData as Map);
     } catch (e) {
@@ -519,6 +543,45 @@ class AppProvider with ChangeNotifier {
       _adminGoogleAuthConfig = Map<String, dynamic>.from(data as Map);
       await fetchGoogleAuthConfig();
       notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> createQuotaTier(Map<String, dynamic> value) async {
+    try {
+      await ApiService.post(ApiConfig.adminQuotaTiers, body: value);
+      await fetchAdminData();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> updateQuotaTier(String id, Map<String, dynamic> value) async {
+    try {
+      await ApiService.put(ApiConfig.adminQuotaTier(id), body: value);
+      await fetchAdminData();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> assignUserQuotaTier(String userId, String tierId) async {
+    try {
+      await ApiService.put(
+        ApiConfig.adminUserQuotaTier(userId),
+        body: {'quotaTierId': tierId},
+      );
+      await fetchAdminData();
       return true;
     } catch (e) {
       _errorMessage = e.toString();
@@ -677,6 +740,94 @@ class AppProvider with ChangeNotifier {
       _errorMessage = e.toString();
       notifyListeners();
       return false;
+    }
+  }
+
+  // ==========================================
+  // LEARN & 50-QUESTION QUIZ METHODS
+  // ==========================================
+
+  void clearActiveQuiz() {
+    _activeQuiz = null;
+    notifyListeners();
+  }
+
+  Future<void> fetchGrammarTopics({String? level}) async {
+    _isLearnLoading = true;
+    notifyListeners();
+    try {
+      final url = level != null ? '${ApiConfig.learnGrammar}?level=$level' : ApiConfig.learnGrammar;
+      final res = await ApiService.get(url);
+      final list = (res['topics'] as List<dynamic>? ?? []);
+      _grammarTopics = list
+          .map((item) => GrammarTopicModel.fromJson(item as Map<String, dynamic>))
+          .toList();
+      _isLearnLoading = false;
+      notifyListeners();
+    } catch (e) {
+      _isLearnLoading = false;
+      _errorMessage = e.toString();
+      notifyListeners();
+    }
+  }
+
+  Future<void> fetchLearningTips({String? category}) async {
+    _isLearnLoading = true;
+    notifyListeners();
+    try {
+      final url = ApiConfig.learnTips(category: category);
+      final res = await ApiService.get(url);
+      final list = (res['tips'] as List<dynamic>? ?? []);
+      _learningTips = list
+          .map((item) => LearningTipModel.fromJson(item as Map<String, dynamic>))
+          .toList();
+      _isLearnLoading = false;
+      notifyListeners();
+    } catch (e) {
+      _isLearnLoading = false;
+      _errorMessage = e.toString();
+      notifyListeners();
+    }
+  }
+
+  Future<QuizModel?> fetch50QuestionQuiz({String? level, String? topicId}) async {
+    _isLearnLoading = true;
+    notifyListeners();
+    try {
+      final url = ApiConfig.learnQuiz(level: level, topicId: topicId);
+      final res = await ApiService.get(url);
+      final quizData = res['quiz'] as Map<String, dynamic>;
+      _activeQuiz = QuizModel.fromJson(quizData);
+      _isLearnLoading = false;
+      notifyListeners();
+      return _activeQuiz;
+    } catch (e) {
+      _isLearnLoading = false;
+      _errorMessage = e.toString();
+      notifyListeners();
+      return null;
+    }
+  }
+
+  Future<String?> askAiGrammarExplanation({
+    required String topic,
+    required String query,
+    required String level,
+  }) async {
+    try {
+      final res = await ApiService.post(
+        ApiConfig.learnExplain,
+        body: {
+          'topic': topic,
+          'query': query,
+          'level': level,
+        },
+      );
+      return res['explanation'] as String?;
+    } catch (e) {
+      _errorMessage = e.toString();
+      notifyListeners();
+      return null;
     }
   }
 }

@@ -8,13 +8,16 @@ export async function GET(request: Request) {
       return errorResponse("FORBIDDEN", "Admin privileges required", 403);
     }
 
-    const users = await prisma.user.findMany({
-      include: {
-        profile: true,
-        quotaTier: true,
-      },
-      orderBy: { createdAt: "desc" },
-    });
+    const [users, freeTier] = await Promise.all([
+      prisma.user.findMany({
+        include: {
+          profile: true,
+          quotaTier: true,
+        },
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.quotaTier.findUnique({ where: { name: "FREE" } }),
+    ]);
 
     return successResponse(
       users.map((u) => ({
@@ -23,8 +26,8 @@ export async function GET(request: Request) {
         email: u.email,
         role: u.role,
         isActive: u.isActive,
-        quotaTierId: u.quotaTierId,
-        quotaTier: u.quotaTier,
+        quotaTierId: u.quotaTierId ?? freeTier?.id ?? null,
+        quotaTier: u.quotaTier ?? freeTier,
         createdAt: u.createdAt.toISOString(),
         profile: u.profile
           ? {
