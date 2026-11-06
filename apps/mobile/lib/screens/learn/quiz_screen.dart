@@ -430,7 +430,7 @@ class _QuizScreenState extends State<QuizScreen> {
                     height: 100,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: scoreColor.withOpacity(0.1),
+                      color: scoreColor.withValues(alpha: 0.1),
                     ),
                     alignment: Alignment.center,
                     child: Text(
