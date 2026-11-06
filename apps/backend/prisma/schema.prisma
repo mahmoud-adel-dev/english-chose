@@ -66,6 +66,8 @@ model User {
   updatedAt    DateTime @updatedAt
   googleSubject String?  @unique
   authProvider  String   @default("PASSWORD")
+  quotaTierId   String?
+  quotaTier     QuotaTier? @relation(fields: [quotaTierId], references: [id], onDelete: SetNull)
 
   profile     LearningProfile?
   assessments CefrAssessment[]
@@ -76,6 +78,7 @@ model User {
 
   @@index([email])
   @@index([role])
+  @@index([quotaTierId])
 }
 
 model GoogleAuthConfig {
@@ -342,6 +345,8 @@ model QuotaTier {
   maxAudioMinutesDay Float            @default(10.0)
   maxAttemptsPerItem Int              @default(3)
   requestsPerMinute  Int              @default(20)
+  isActive            Boolean          @default(true)
+  users               User[]
   userQuotaUsages    UserQuotaUsage[]
 }
 

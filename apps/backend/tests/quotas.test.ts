@@ -18,6 +18,10 @@ describe("Quota Manager & Concurrency-Safe Enforcement", () => {
       },
     });
     testUserId = user.id;
+    // Reset daily usage for clean test run
+    await prisma.userQuotaUsage.deleteMany({
+      where: { userId: testUserId },
+    });
   });
 
   it("permits initial question attempts and decrements remaining quota", async () => {

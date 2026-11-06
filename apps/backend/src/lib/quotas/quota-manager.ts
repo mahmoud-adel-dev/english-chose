@@ -1,4 +1,5 @@
 import { prisma } from "../prisma";
+import { resolveUserQuotaTier } from "./tier-resolver";
 
 export type QuotaActionType = "QUESTION" | "SESSION" | "AUDIO";
 
@@ -38,23 +39,7 @@ export class QuotaManager {
       return { allowed: false, remaining: 0, reason: "User account is suspended or inactive." };
     }
 
-    // Default to FREE tier if none explicitly bound; create if not seeded
-    let tier = await prisma.quotaTier.findFirst({
-      where: { name: "FREE" },
-    });
-
-    if (!tier) {
-      tier = await prisma.quotaTier.create({
-        data: {
-          name: "FREE",
-          maxDailyQuestions: 15,
-          maxDailySessions: 2,
-          maxAudioMinutesDay: 10.0,
-          maxAttemptsPerItem: 3,
-          requestsPerMinute: 20,
-        },
-      });
-    }
+    const tier = await resolveUserQuotaTier(userId);
 
     // 2. Upsert today's usage row
     const usage = await prisma.userQuotaUsage.upsert({

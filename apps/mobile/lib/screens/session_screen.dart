@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../config/theme.dart';
@@ -6,6 +8,8 @@ import '../widgets/savable_text.dart';
 import '../widgets/save_word_dialog.dart';
 import '../models/session.dart';
 import '../providers/app_provider.dart';
+import '../services/session_progress_store.dart';
+import '../services/session_resume_policy.dart';
 import '../services/tts_service.dart';
 import '../services/stt_service.dart';
 import 'logs_screen.dart';
@@ -22,9 +26,11 @@ class _SessionScreenState extends State<SessionScreen>
   final _answerController = TextEditingController();
   final TtsService _tts = TtsService();
   final SttService _stt = SttService();
+  final SessionProgressStore _progressStore = SessionProgressStore();
 
   int _currentQuestionIndex = 0;
   bool _isTtsSpeaking = false;
+  bool _isRestoringDraft = false;
 
   Future<void> _saveSelectedWord(String word, String sourceText) async {
     await showSaveWordDialog(
@@ -59,10 +65,61 @@ class _SessionScreenState extends State<SessionScreen>
     );
 
     _initAudioServices();
+    _answerController.addListener(_persistCurrentDraft);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<AppProvider>().fetchCurrentSession();
+      _restoreSessionProgress();
     });
+  }
+
+  Future<void> _restoreSessionProgress() async {
+    final provider = context.read<AppProvider>();
+    await provider.fetchCurrentSession();
+    if (!mounted) return;
+
+    final session = provider.currentSession;
+    if (session == null || session.questions.isEmpty) return;
+
+    final resumeIndex = findResumeQuestionIndex(
+      session.questions.map((question) => question.attemptsUsed).toList(),
+    );
+    await _showQuestion(session, resumeIndex);
+  }
+
+  Future<void> _showQuestion(DailySessionModel session, int index) async {
+    if (index < 0 || index >= session.questions.length) return;
+
+    final question = session.questions[index];
+    final draft = await _progressStore.loadDraft(session.id, question.id) ?? '';
+    if (!mounted) return;
+
+    _isRestoringDraft = true;
+    setState(() {
+      _currentQuestionIndex = index;
+      _activeSupportAction = null;
+      _liveTranscript = draft;
+      _answerController.text = draft;
+      _answerController.selection = TextSelection.collapsed(
+        offset: draft.length,
+      );
+    });
+    _isRestoringDraft = false;
+  }
+
+  void _persistCurrentDraft() {
+    if (_isRestoringDraft || !mounted) return;
+
+    final session = context.read<AppProvider>().currentSession;
+    if (session == null ||
+        _currentQuestionIndex < 0 ||
+        _currentQuestionIndex >= session.questions.length) {
+      return;
+    }
+
+    final question = session.questions[_currentQuestionIndex];
+    unawaited(
+      _progressStore.saveDraft(session.id, question.id, _answerController.text),
+    );
   }
 
   Future<void> _initAudioServices() async {
@@ -120,6 +177,7 @@ class _SessionScreenState extends State<SessionScreen>
 
   @override
   void dispose() {
+    _answerController.removeListener(_persistCurrentDraft);
     _answerController.dispose();
     _tts.dispose();
     _stt.dispose();
@@ -1206,8 +1264,12 @@ class _SessionScreenState extends State<SessionScreen>
       return;
     }
 
+    final sessionId = provider.currentSession?.id;
     final success = await provider.submitAnswer(questionId, text);
     if (success) {
+      if (sessionId != null) {
+        await _progressStore.clearDraft(sessionId, questionId);
+      }
       _answerController.clear();
       setState(() => _liveTranscript = '');
 
@@ -1438,12 +1500,13 @@ class _SessionScreenState extends State<SessionScreen>
                           });
                           await provider.finishSession();
                         } else {
-                          setState(() {
-                            _activeSupportAction = null;
-                            _currentQuestionIndex++;
-                            _liveTranscript = '';
-                            _answerController.clear();
-                          });
+                          final session = provider.currentSession;
+                          if (session != null) {
+                            await _showQuestion(
+                              session,
+                              _currentQuestionIndex + 1,
+                            );
+                          }
                           // Clear last evaluation for fresh view
                           provider.clearError();
                         }

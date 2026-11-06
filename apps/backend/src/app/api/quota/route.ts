@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { authenticateRequest, successResponse, errorResponse } from "../_helpers";
 import { QuotaUsageDto } from "@english-coach/contracts";
+import { resolveUserQuotaTier } from "@/lib/quotas/tier-resolver";
 
 export async function GET(request: Request) {
   try {
@@ -12,22 +13,7 @@ export async function GET(request: Request) {
     const now = new Date();
     const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
 
-    let tier = await prisma.quotaTier.findFirst({
-      where: { name: "FREE" },
-    });
-
-    if (!tier) {
-      tier = await prisma.quotaTier.create({
-        data: {
-          name: "FREE",
-          maxDailyQuestions: 15,
-          maxDailySessions: 2,
-          maxAudioMinutesDay: 10.0,
-          maxAttemptsPerItem: 3,
-          requestsPerMinute: 20,
-        },
-      });
-    }
+    const tier = await resolveUserQuotaTier(auth.userId);
 
     const usage = await prisma.userQuotaUsage.findUnique({
       where: {
@@ -59,4 +45,3 @@ export async function GET(request: Request) {
     return errorResponse("SERVER_ERROR", "Failed to retrieve quota", 500);
   }
 }
-
