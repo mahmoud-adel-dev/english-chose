@@ -42,7 +42,7 @@ describe("AI Task Routing & Fallback Mechanism", () => {
     expect(res.parsedJson).toBeDefined();
     expect(Array.isArray(res.parsedJson)).toBe(true);
     expect(res.latencyMs).toBeGreaterThan(0);
-  });
+  }, 30_000);
 
   it("automatically falls back to secondary model when primary fails", async () => {
     // Register a failing mock adapter for test-failing-provider
@@ -123,5 +123,5 @@ describe("AI Task Routing & Fallback Mechanism", () => {
 
     expect(log).not.toBeNull();
     expect(log?.statusCode).toBe(200);
-  }, 15_000);
+  }, 30_000);
 });

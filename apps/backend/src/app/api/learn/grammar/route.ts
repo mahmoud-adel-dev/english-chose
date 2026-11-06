@@ -11,11 +11,19 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const levelParam = searchParams.get("level") as CefrLevel | null;
 
+  let response;
   if (levelParam) {
     const topics = getGrammarTopicsByLevel(levelParam);
-    return successResponse({ level: levelParam, topics });
+    response = successResponse({ level: levelParam, topics });
+  } else {
+    response = successResponse({ topics: GRAMMAR_CATALOG });
   }
 
-  return successResponse({ topics: GRAMMAR_CATALOG });
+  // Caching to save server and database resources
+  response.headers.set(
+    "Cache-Control",
+    "public, max-age=3600, stale-while-revalidate=86400"
+  );
+  return response;
 }
 

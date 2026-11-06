@@ -27,15 +27,30 @@ class _LearnHubScreenState extends State<LearnHubScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
+    _tabController.addListener(_onTabChanged);
+
+    // Lazy load: only load Tab 0 (Grammar) initially if not already cached
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final provider = context.read<AppProvider>();
-      provider.fetchGrammarTopics();
-      provider.fetchLearningTips();
+      context.read<AppProvider>().fetchGrammarTopicsIfNeeded();
     });
+  }
+
+  void _onTabChanged() {
+    if (!_tabController.indexIsChanging) {
+      final index = _tabController.index;
+      final provider = context.read<AppProvider>();
+      if (index == 0) {
+        provider.fetchGrammarTopicsIfNeeded();
+      } else if (index == 2 || index == 3) {
+        // Load tips lazily only when user visits pronunciation or listening tab
+        provider.fetchLearningTipsIfNeeded();
+      }
+    }
   }
 
   @override
   void dispose() {
+    _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
     _tts.dispose();
     super.dispose();
@@ -135,13 +150,16 @@ class _LearnHubScreenState extends State<LearnHubScreen>
               ? const Center(
                   child: Text('No grammar topics found for this level.'),
                 )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: filteredTopics.length,
-                  itemBuilder: (context, idx) {
-                    final topic = filteredTopics[idx];
-                    return _buildTopicCard(topic);
-                  },
+              : RefreshIndicator(
+                  onRefresh: () => provider.fetchGrammarTopicsIfNeeded(force: true),
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: filteredTopics.length,
+                    itemBuilder: (context, idx) {
+                      final topic = filteredTopics[idx];
+                      return _buildTopicCard(topic);
+                    },
+                  ),
                 ),
         ),
       ],
@@ -162,7 +180,6 @@ class _LearnHubScreenState extends State<LearnHubScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -179,12 +196,18 @@ class _LearnHubScreenState extends State<LearnHubScreen>
                     ),
                   ),
                 ),
-                Text(
-                  topic.titleArabic,
-                  style: const TextStyle(
-                    color: Color(0xFF64748B),
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    topic.titleArabic,
+                    textAlign: TextAlign.end,
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                    style: const TextStyle(
+                      color: Color(0xFF64748B),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
                   ),
                 ),
               ],
@@ -400,13 +423,16 @@ class _LearnHubScreenState extends State<LearnHubScreen>
   Widget _buildPronunciationTab(AppProvider provider) {
     final pronTips = provider.learningTips.where((t) => t.category == 'PRONUNCIATION').toList();
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: pronTips.length,
-      itemBuilder: (context, idx) {
-        final tip = pronTips[idx];
-        return _buildTipCard(tip);
-      },
+    return RefreshIndicator(
+      onRefresh: () => provider.fetchLearningTipsIfNeeded(force: true),
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: pronTips.length,
+        itemBuilder: (context, idx) {
+          final tip = pronTips[idx];
+          return _buildTipCard(tip);
+        },
+      ),
     );
   }
 
@@ -416,13 +442,16 @@ class _LearnHubScreenState extends State<LearnHubScreen>
   Widget _buildListeningTab(AppProvider provider) {
     final listTips = provider.learningTips.where((t) => t.category == 'LISTENING').toList();
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: listTips.length,
-      itemBuilder: (context, idx) {
-        final tip = listTips[idx];
-        return _buildTipCard(tip);
-      },
+    return RefreshIndicator(
+      onRefresh: () => provider.fetchLearningTipsIfNeeded(force: true),
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: listTips.length,
+        itemBuilder: (context, idx) {
+          final tip = listTips[idx];
+          return _buildTipCard(tip);
+        },
+      ),
     );
   }
 
@@ -440,7 +469,6 @@ class _LearnHubScreenState extends State<LearnHubScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -457,12 +485,18 @@ class _LearnHubScreenState extends State<LearnHubScreen>
                     ),
                   ),
                 ),
-                Text(
-                  tip.titleArabic,
-                  style: const TextStyle(
-                    color: Color(0xFF64748B),
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    tip.titleArabic,
+                    textAlign: TextAlign.end,
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                    style: const TextStyle(
+                      color: Color(0xFF64748B),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
                   ),
                 ),
               ],

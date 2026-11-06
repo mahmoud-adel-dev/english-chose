@@ -22,10 +22,13 @@ describe("Grammar & Learning Module", () => {
     expect(topic?.level).toBe("A1");
   });
 
-  it("generates an exact 50-question quiz with 4 choices per question", () => {
+  it("generates an exact 50-question quiz with 4 choices per question and no duplicate prompts", () => {
     const quiz = generate50QuestionQuiz({ level: "B1" });
     expect(quiz.totalQuestions).toBe(50);
     expect(quiz.questions.length).toBe(50);
+
+    const prompts = new Set(quiz.questions.map((q) => q.prompt));
+    expect(prompts.size).toBe(50); // Guarantees all 50 questions are completely unique!
 
     for (let i = 0; i < quiz.questions.length; i++) {
       const q = quiz.questions[i];

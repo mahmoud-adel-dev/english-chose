@@ -205,12 +205,18 @@ class _GrammarLessonScreenState extends State<GrammarLessonScreen> {
                           ),
                         ),
                       ),
-                      Text(
-                        topic.titleArabic,
-                        style: const TextStyle(
-                          color: Color(0xFF64748B),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          topic.titleArabic,
+                          textAlign: TextAlign.end,
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                          style: const TextStyle(
+                            color: Color(0xFF64748B),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                          ),
                         ),
                       ),
                     ],

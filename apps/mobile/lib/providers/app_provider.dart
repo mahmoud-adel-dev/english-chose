@@ -26,6 +26,8 @@ class AppProvider with ChangeNotifier {
   List<LearningTipModel> _learningTips = [];
   QuizModel? _activeQuiz;
   bool _isLearnLoading = false;
+  bool _hasFetchedGrammar = false;
+  bool _hasFetchedTips = false;
 
   // Admin states
   Map<String, dynamic>? _adminAnalytics;
@@ -750,6 +752,18 @@ class AppProvider with ChangeNotifier {
   void clearActiveQuiz() {
     _activeQuiz = null;
     notifyListeners();
+  }
+
+  Future<void> fetchGrammarTopicsIfNeeded({bool force = false}) async {
+    if (!force && _hasFetchedGrammar && _grammarTopics.isNotEmpty) return;
+    await fetchGrammarTopics();
+    _hasFetchedGrammar = true;
+  }
+
+  Future<void> fetchLearningTipsIfNeeded({String? category, bool force = false}) async {
+    if (!force && _hasFetchedTips && _learningTips.isNotEmpty) return;
+    await fetchLearningTips(category: category);
+    _hasFetchedTips = true;
   }
 
   Future<void> fetchGrammarTopics({String? level}) async {
