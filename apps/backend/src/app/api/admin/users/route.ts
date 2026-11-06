@@ -11,6 +11,7 @@ export async function GET(request: Request) {
     const users = await prisma.user.findMany({
       include: {
         profile: true,
+        quotaTier: true,
       },
       orderBy: { createdAt: "desc" },
     });
@@ -22,6 +23,8 @@ export async function GET(request: Request) {
         email: u.email,
         role: u.role,
         isActive: u.isActive,
+        quotaTierId: u.quotaTierId,
+        quotaTier: u.quotaTier,
         createdAt: u.createdAt.toISOString(),
         profile: u.profile
           ? {
@@ -40,4 +43,3 @@ export async function GET(request: Request) {
     return errorResponse("SERVER_ERROR", "Failed to retrieve users", 500);
   }
 }
-

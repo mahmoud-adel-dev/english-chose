@@ -49,7 +49,7 @@ export class QuotaManager {
           date: today,
         },
       },
-      update: {},
+      update: { tierId: tier.id },
       create: {
         userId,
         tierId: tier.id,
