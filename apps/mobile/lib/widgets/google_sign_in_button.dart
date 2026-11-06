@@ -14,9 +14,8 @@ class GoogleSignInButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (!enabled) return const SizedBox.shrink();
     return OutlinedButton.icon(
-      onPressed: loading ? null : onPressed,
+      onPressed: loading || !enabled ? null : onPressed,
       icon: loading
           ? const SizedBox(
               width: 18,

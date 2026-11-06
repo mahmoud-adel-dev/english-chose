@@ -303,28 +303,35 @@ class _AuthScreenState extends State<AuthScreen> {
                             : Text(isLogin ? 'Sign In' : 'Create Account'),
                       ),
 
-                      if (provider.isGoogleLoginEnabled) ...[
-                        const SizedBox(height: 14),
-                        Row(
-                          children: [
-                            const Expanded(child: Divider()),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                              ),
-                              child: Text(
-                                'or',
-                                style: TextStyle(color: Colors.grey.shade600),
-                              ),
+                      const SizedBox(height: 14),
+                      Row(
+                        children: [
+                          const Expanded(child: Divider()),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                            child: Text(
+                              'or',
+                              style: TextStyle(color: Colors.grey.shade600),
                             ),
-                            const Expanded(child: Divider()),
-                          ],
-                        ),
-                        const SizedBox(height: 14),
-                        GoogleSignInButton(
-                          enabled: true,
-                          loading: provider.isLoading,
-                          onPressed: provider.loginWithGoogle,
+                          ),
+                          const Expanded(child: Divider()),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      GoogleSignInButton(
+                        enabled: provider.isGoogleLoginEnabled,
+                        loading: provider.isLoading,
+                        onPressed: provider.loginWithGoogle,
+                      ),
+                      if (!provider.isGoogleLoginEnabled) ...[
+                        const SizedBox(height: 6),
+                        const Text(
+                          'Google login is waiting for the administrator to add the Web Client ID and enable it.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Color(0xFF94A3B8),
+                            fontSize: 11,
+                          ),
                         ),
                       ],
 
