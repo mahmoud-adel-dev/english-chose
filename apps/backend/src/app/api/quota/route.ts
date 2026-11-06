@@ -12,15 +12,22 @@ export async function GET(request: Request) {
     const now = new Date();
     const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
 
-    const tier = (await prisma.quotaTier.findFirst({
+    let tier = await prisma.quotaTier.findFirst({
       where: { name: "FREE" },
-    })) || {
-      id: "default",
-      name: "FREE",
-      maxDailyQuestions: 15,
-      maxDailySessions: 2,
-      maxAudioMinutesDay: 10.0,
-    };
+    });
+
+    if (!tier) {
+      tier = await prisma.quotaTier.create({
+        data: {
+          name: "FREE",
+          maxDailyQuestions: 15,
+          maxDailySessions: 2,
+          maxAudioMinutesDay: 10.0,
+          maxAttemptsPerItem: 3,
+          requestsPerMinute: 20,
+        },
+      });
+    }
 
     const usage = await prisma.userQuotaUsage.findUnique({
       where: {

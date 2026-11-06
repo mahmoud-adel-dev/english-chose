@@ -32,7 +32,7 @@ const ASSESSMENT_PROMPTS: Record<CefrLevel, string[]> = {
   B1: [
     "Why is learning English important for your future career or travel?",
     "How does speaking English help you connect with people and opportunities?",
-    "Describe a challenging problem you solved at work or during your studies.",
+    "Describe a challenging problem you solved using English at work or during your studies.",
   ],
   B2: [
     "Do you think artificial intelligence will replace some human jobs? Explain your opinion.",

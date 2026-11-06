@@ -19,7 +19,7 @@ export class QuotaManager {
   }
 
   /**
-   * Atomically checks and increments quota usage using a database transaction.
+   * Atomically checks and increments quota usage.
    */
   static async checkAndConsume(
     userId: string,
@@ -28,130 +28,132 @@ export class QuotaManager {
   ): Promise<QuotaCheckResult> {
     const today = this.getTodayUtc();
 
-    return await prisma.$transaction(async (tx) => {
-      // 1. Fetch user and their default/assigned quota tier
-      const user = await tx.user.findUnique({
-        where: { id: userId },
-        select: { id: true, isActive: true },
-      });
+    // 1. Fetch user and their default/assigned quota tier
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, isActive: true },
+    });
 
-      if (!user || !user.isActive) {
-        return { allowed: false, remaining: 0, reason: "User account is suspended or inactive." };
+    if (!user || !user.isActive) {
+      return { allowed: false, remaining: 0, reason: "User account is suspended or inactive." };
+    }
+
+    // Default to FREE tier if none explicitly bound; create if not seeded
+    let tier = await prisma.quotaTier.findFirst({
+      where: { name: "FREE" },
+    });
+
+    if (!tier) {
+      tier = await prisma.quotaTier.create({
+        data: {
+          name: "FREE",
+          maxDailyQuestions: 15,
+          maxDailySessions: 2,
+          maxAudioMinutesDay: 10.0,
+          maxAttemptsPerItem: 3,
+          requestsPerMinute: 20,
+        },
+      });
+    }
+
+    // 2. Upsert today's usage row
+    const usage = await prisma.userQuotaUsage.upsert({
+      where: {
+        userId_date: {
+          userId,
+          date: today,
+        },
+      },
+      update: {},
+      create: {
+        userId,
+        tierId: tier.id,
+        date: today,
+        questionsAnswered: 0,
+        sessionsCount: 0,
+        audioMinutesUsed: 0.0,
+        requestCount: 0,
+      },
+    });
+
+    // 3. Evaluate limits based on action
+    if (action === "QUESTION") {
+      const remaining = tier.maxDailyQuestions - usage.questionsAnswered;
+      if (remaining < amount) {
+        return {
+          allowed: false,
+          remaining: Math.max(0, remaining),
+          reason: `Daily question quota exceeded (${usage.questionsAnswered}/${tier.maxDailyQuestions}). Resets tomorrow at 00:00 UTC.`,
+        };
       }
 
-      // Default to FREE tier if none explicitly bound
-      const tier = (await tx.quotaTier.findFirst({
-        where: { name: "FREE" },
-      })) || {
-        id: "default",
-        maxDailyQuestions: 15,
-        maxDailySessions: 2,
-        maxAudioMinutesDay: 10.0,
-      };
-
-      // 2. Upsert today's usage row
-      let usage = await tx.userQuotaUsage.findUnique({
-        where: {
-          userId_date: {
-            userId,
-            date: today,
-          },
+      const updated = await prisma.userQuotaUsage.update({
+        where: { id: usage.id },
+        data: {
+          questionsAnswered: { increment: amount },
+          requestCount: { increment: 1 },
         },
       });
 
-      if (!usage) {
-        usage = await tx.userQuotaUsage.create({
-          data: {
-            userId,
-            tierId: tier.id,
-            date: today,
-            questionsAnswered: 0,
-            sessionsCount: 0,
-            audioMinutesUsed: 0.0,
-            requestCount: 0,
-          },
-        });
-      }
+      return {
+        allowed: true,
+        remaining: tier.maxDailyQuestions - updated.questionsAnswered,
+        usageId: updated.id,
+      };
+    }
 
-      // 3. Evaluate limits based on action
-      if (action === "QUESTION") {
-        const remaining = tier.maxDailyQuestions - usage.questionsAnswered;
-        if (remaining < amount) {
-          return {
-            allowed: false,
-            remaining: Math.max(0, remaining),
-            reason: `Daily question quota exceeded (${usage.questionsAnswered}/${tier.maxDailyQuestions}). Resets tomorrow at 00:00 UTC.`,
-          };
-        }
-
-        const updated = await tx.userQuotaUsage.update({
-          where: { id: usage.id },
-          data: {
-            questionsAnswered: { increment: amount },
-            requestCount: { increment: 1 },
-          },
-        });
-
+    if (action === "SESSION") {
+      const remaining = tier.maxDailySessions - usage.sessionsCount;
+      if (remaining < amount) {
         return {
-          allowed: true,
-          remaining: tier.maxDailyQuestions - updated.questionsAnswered,
-          usageId: updated.id,
+          allowed: false,
+          remaining: Math.max(0, remaining),
+          reason: `Daily practice session limit reached (${usage.sessionsCount}/${tier.maxDailySessions}).`,
         };
       }
 
-      if (action === "SESSION") {
-        const remaining = tier.maxDailySessions - usage.sessionsCount;
-        if (remaining < amount) {
-          return {
-            allowed: false,
-            remaining: Math.max(0, remaining),
-            reason: `Daily practice session limit reached (${usage.sessionsCount}/${tier.maxDailySessions}).`,
-          };
-        }
+      const updated = await prisma.userQuotaUsage.update({
+        where: { id: usage.id },
+        data: {
+          sessionsCount: { increment: amount },
+          requestCount: { increment: 1 },
+        },
+      });
 
-        const updated = await tx.userQuotaUsage.update({
-          where: { id: usage.id },
-          data: {
-            sessionsCount: { increment: amount },
-            requestCount: { increment: 1 },
-          },
-        });
+      return {
+        allowed: true,
+        remaining: tier.maxDailySessions - updated.sessionsCount,
+        usageId: updated.id,
+      };
+    }
 
+    if (action === "AUDIO") {
+      const audioMinutes = amount; // in minutes
+      const remaining = tier.maxAudioMinutesDay - usage.audioMinutesUsed;
+      if (remaining < audioMinutes) {
         return {
-          allowed: true,
-          remaining: tier.maxDailySessions - updated.sessionsCount,
-          usageId: updated.id,
+          allowed: false,
+          remaining: Math.max(0, remaining),
+          reason: `Daily voice processing quota reached (${usage.audioMinutesUsed.toFixed(1)}/${tier.maxAudioMinutesDay} min).`,
         };
       }
 
-      if (action === "AUDIO") {
-        const audioMinutes = amount; // in minutes
-        const remaining = tier.maxAudioMinutesDay - usage.audioMinutesUsed;
-        if (remaining < audioMinutes) {
-          return {
-            allowed: false,
-            remaining: Math.max(0, remaining),
-            reason: `Daily voice processing quota reached (${usage.audioMinutesUsed.toFixed(1)}/${tier.maxAudioMinutesDay} min).`,
-          };
-        }
+      const updated = await prisma.userQuotaUsage.update({
+        where: { id: usage.id },
+        data: {
+          audioMinutesUsed: { increment: audioMinutes },
+          requestCount: { increment: 1 },
+        },
+      });
 
-        const updated = await tx.userQuotaUsage.update({
-          where: { id: usage.id },
-          data: {
-            audioMinutesUsed: { increment: audioMinutes },
-            requestCount: { increment: 1 },
-          },
-        });
+      return {
+        allowed: true,
+        remaining: tier.maxAudioMinutesDay - updated.audioMinutesUsed,
+        usageId: updated.id,
+      };
+    }
 
-        return {
-          allowed: true,
-          remaining: tier.maxAudioMinutesDay - updated.audioMinutesUsed,
-          usageId: updated.id,
-        };
-      }
-
-      return { allowed: false, remaining: 0, reason: "Unsupported quota action." };
-    });
+    return { allowed: false, remaining: 0, reason: "Unsupported quota action." };
   }
 
   /**
