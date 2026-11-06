@@ -5,6 +5,7 @@ import { AiTaskRouter } from "@/lib/ai/task-router";
 import { AiTaskType } from "@prisma/client";
 import {
   assessmentPromptForLevel,
+  determineAssessedLevel,
   nextAdaptiveLevel,
   normalizeScore,
   validateEnglishAnswer,
@@ -183,18 +184,14 @@ Learner's Submitted Answer: "${transcript}"`,
         where: { assessmentId: assessment.id },
       });
 
-      const totalScore = allItems.reduce((acc, curr) => acc + (curr.evalScore ?? 0), 0);
-      const avgScore = Math.round(totalScore / (allItems.length || 1));
-
-      const levelOrder: CefrLevel[] = ["A1", "A2", "B1", "B2", "C1", "C2"];
-      const passedLevels = allItems
-        .filter((item) => (item.evalScore ?? 0) >= 60)
-        .map((item) => item.targetLevel as CefrLevel);
-      const determinedLevel = passedLevels.reduce<CefrLevel>(
-        (highest, level) =>
-          levelOrder.indexOf(level) > levelOrder.indexOf(highest) ? level : highest,
-        "A1"
+      const placement = determineAssessedLevel(
+        allItems.map((item) => ({
+          targetLevel: item.targetLevel as CefrLevel,
+          score: item.evalScore ?? 0,
+        }))
       );
+      const avgScore = placement.averageScore;
+      const determinedLevel = placement.level;
 
       const componentAverage = (key: string, fallback: number) => {
         const values = allItems

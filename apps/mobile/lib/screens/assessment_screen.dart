@@ -6,6 +6,7 @@ import '../widgets/level_badge.dart';
 import '../services/tts_service.dart';
 import '../services/stt_service.dart';
 import '../widgets/english_answer_formatter.dart';
+import '../widgets/assessment_level_selector.dart';
 
 class AssessmentScreen extends StatefulWidget {
   final VoidCallback onFinish;
@@ -250,16 +251,57 @@ class _AssessmentScreenState extends State<AssessmentScreen>
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white),
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
                     )
                   : const Icon(Icons.play_arrow_rounded),
-              label: Text(provider.isLoading
-                  ? 'Preparing Test...'
-                  : 'Start Placement Test'),
-              style: ElevatedButton.styleFrom(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+              label: Text(
+                provider.isLoading
+                    ? 'Preparing Test...'
+                    : 'Start Placement Test',
               ),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 16,
+                ),
+              ),
+            ),
+            const SizedBox(height: 28),
+            const Row(
+              children: [
+                Expanded(child: Divider()),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 12),
+                  child: Text('OR', style: TextStyle(color: Color(0xFF64748B))),
+                ),
+                Expanded(child: Divider()),
+              ],
+            ),
+            const SizedBox(height: 24),
+            AssessmentLevelSelector(
+              initialLevel: provider.profile?.currentLevel ?? 'A1',
+              isLoading: provider.isLoading,
+              onConfirm: (level) async {
+                final success = await provider.selectStartingLevel(level);
+                if (!mounted) return;
+                if (success) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Starting level set to $level.')),
+                  );
+                  widget.onFinish();
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        provider.errorMessage ?? 'Could not save the level.',
+                      ),
+                      backgroundColor: AppTheme.errorColor,
+                    ),
+                  );
+                }
+              },
             ),
           ],
         ),
@@ -319,8 +361,9 @@ class _AssessmentScreenState extends State<AssessmentScreen>
           child: LinearProgressIndicator(
             value: item.itemNumber / item.totalItems,
             backgroundColor: const Color(0xFFE2E8F0),
-            valueColor:
-                const AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+            valueColor: const AlwaysStoppedAnimation<Color>(
+              AppTheme.primaryColor,
+            ),
             minHeight: 8,
           ),
         ),
@@ -439,9 +482,9 @@ class _AssessmentScreenState extends State<AssessmentScreen>
                     maxLines: 5,
                     inputFormatters: [englishAnswerFormatter],
                     decoration: const InputDecoration(
-                      hintText:
-                          'Answer in English using full sentences...',
-                      helperText: 'English letters only. Arabic letters are not accepted.',
+                      hintText: 'Answer in English using full sentences...',
+                      helperText:
+                          'English letters only. Arabic letters are not accepted.',
                     ),
                   ),
                 ],
@@ -450,17 +493,22 @@ class _AssessmentScreenState extends State<AssessmentScreen>
                 Align(
                   alignment: Alignment.centerRight,
                   child: ElevatedButton.icon(
-                    onPressed: provider.isLoading ? null : () => _submit(provider),
+                    onPressed: provider.isLoading
+                        ? null
+                        : () => _submit(provider),
                     icon: provider.isLoading
                         ? const SizedBox(
                             width: 18,
                             height: 18,
                             child: CircularProgressIndicator(
-                                strokeWidth: 2, color: Colors.white),
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
                           )
                         : const Icon(Icons.arrow_forward_rounded),
                     label: Text(
-                        provider.isLoading ? 'Submitting...' : 'Next Question'),
+                      provider.isLoading ? 'Submitting...' : 'Next Question',
+                    ),
                   ),
                 ),
               ],
@@ -505,8 +553,11 @@ class _AssessmentScreenState extends State<AssessmentScreen>
                         ),
                       ),
                     ] else ...[
-                      const Icon(Icons.record_voice_over,
-                          size: 14, color: Color(0xFF94A3B8)),
+                      const Icon(
+                        Icons.record_voice_over,
+                        size: 14,
+                        color: Color(0xFF94A3B8),
+                      ),
                       const SizedBox(width: 6),
                       const Text(
                         'Your spoken response:',
@@ -542,8 +593,9 @@ class _AssessmentScreenState extends State<AssessmentScreen>
         AnimatedBuilder(
           animation: _micPulseController,
           builder: (context, child) {
-            final scale =
-                _isSttListening ? 1.0 + (_micPulseController.value * 0.1) : 1.0;
+            final scale = _isSttListening
+                ? 1.0 + (_micPulseController.value * 0.1)
+                : 1.0;
             return Transform.scale(
               scale: scale,
               child: GestureDetector(
@@ -558,10 +610,11 @@ class _AssessmentScreenState extends State<AssessmentScreen>
                         : AppTheme.primaryColor,
                     boxShadow: [
                       BoxShadow(
-                        color: (_isSttListening
-                                ? AppTheme.errorColor
-                                : AppTheme.primaryColor)
-                            .withValues(alpha: 0.3),
+                        color:
+                            (_isSttListening
+                                    ? AppTheme.errorColor
+                                    : AppTheme.primaryColor)
+                                .withValues(alpha: 0.3),
                         blurRadius: _isSttListening ? 18 : 8,
                       ),
                     ],
@@ -634,9 +687,7 @@ class _AssessmentScreenState extends State<AssessmentScreen>
       if (!started && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              _stt.lastError ?? 'Could not access microphone.',
-            ),
+            content: Text(_stt.lastError ?? 'Could not access microphone.'),
             backgroundColor: AppTheme.errorColor,
           ),
         );
@@ -688,8 +739,9 @@ class _AssessmentScreenState extends State<AssessmentScreen>
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: AppTheme.getLevelColor(result.assessedLevel)
-                    .withValues(alpha: 0.12),
+                color: AppTheme.getLevelColor(
+                  result.assessedLevel,
+                ).withValues(alpha: 0.12),
                 shape: BoxShape.circle,
               ),
               child: Text(

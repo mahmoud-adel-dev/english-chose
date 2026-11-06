@@ -9,6 +9,16 @@ export type AnswerValidationResult =
     };
 
 const LEVELS: CefrLevel[] = ["A1", "A2", "B1", "B2", "C1", "C2"];
+
+export interface AssessedItemResult {
+  targetLevel: CefrLevel;
+  score: number;
+}
+
+export interface AssessedLevelResult {
+  level: CefrLevel;
+  averageScore: number;
+}
 const MIN_WORDS: Record<CefrLevel, number> = {
   A1: 3,
   A2: 5,
@@ -116,4 +126,45 @@ export function normalizeScore(value: unknown): number | null {
   const score = typeof value === "string" && value.trim() !== "" ? Number(value) : value;
   if (typeof score !== "number" || !Number.isFinite(score)) return null;
   return Math.max(0, Math.min(100, score));
+}
+
+export function determineAssessedLevel(items: AssessedItemResult[]): AssessedLevelResult {
+  const validItems = items
+    .map((item) => ({ ...item, score: normalizeScore(item.score) }))
+    .filter((item): item is AssessedItemResult => item.score !== null);
+
+  if (validItems.length === 0) return { level: "A1", averageScore: 0 };
+
+  const averageScore = Math.round(
+    validItems.reduce((sum, item) => sum + item.score, 0) / validItems.length
+  );
+
+  const demonstratedIndexes = validItems
+    .map((item) => {
+      const targetIndex = LEVELS.indexOf(item.targetLevel);
+      const penalty = item.score < 25 ? 2 : item.score < 50 ? 1 : 0;
+      return Math.max(0, targetIndex - penalty);
+    })
+    .sort((a, b) => a - b);
+
+  // The lower median requires repeated evidence and prevents one strong answer
+  // from promoting an otherwise weak assessment.
+  const evidenceIndex = demonstratedIndexes[Math.floor((demonstratedIndexes.length - 1) / 2)];
+  const scoreCapIndex =
+    averageScore < 50
+      ? 0
+      : averageScore < 65
+        ? 1
+        : averageScore < 75
+          ? 2
+          : averageScore < 85
+            ? 3
+            : averageScore < 93
+              ? 4
+              : 5;
+
+  return {
+    level: LEVELS[Math.min(evidenceIndex, scoreCapIndex)],
+    averageScore,
+  };
 }

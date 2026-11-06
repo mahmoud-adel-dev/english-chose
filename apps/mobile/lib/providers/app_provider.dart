@@ -187,6 +187,29 @@ class AppProvider with ChangeNotifier {
     } catch (_) {}
   }
 
+  Future<bool> selectStartingLevel(String level) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      final data = await ApiService.put(
+        ApiConfig.profile,
+        body: {'currentLevel': level},
+      );
+      _profile = LearningProfileModel.fromJson(data);
+      _lastAssessmentResult = null;
+      _currentAssessmentItem = null;
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
   // --- TRAINING SESSIONS ---
   Future<bool> startSession() async {
     _isLoading = true;
@@ -288,11 +311,10 @@ class AppProvider with ChangeNotifier {
     _learningSupportContent = null;
     notifyListeners();
     try {
-      final data = await ApiService.post(ApiConfig.learningSupport, body: {
-        'action': action,
-        'question': question,
-        'level': level,
-      });
+      final data = await ApiService.post(
+        ApiConfig.learningSupport,
+        body: {'action': action, 'question': question, 'level': level},
+      );
       _learningSupportContent = data['content'] as String?;
       _isLoading = false;
       notifyListeners();
@@ -308,7 +330,9 @@ class AppProvider with ChangeNotifier {
   Future<void> fetchSavedWords() async {
     try {
       final data = await ApiService.get(ApiConfig.vocabulary) as List<dynamic>;
-      _savedWords = data.map((item) => Map<String, dynamic>.from(item as Map)).toList();
+      _savedWords = data
+          .map((item) => Map<String, dynamic>.from(item as Map))
+          .toList();
       notifyListeners();
     } catch (e) {
       _errorMessage = e.toString();
@@ -323,12 +347,15 @@ class AppProvider with ChangeNotifier {
     String? level,
   }) async {
     try {
-      await ApiService.post(ApiConfig.vocabulary, body: {
-        'word': word,
-        'translation': translation,
-        'exampleSentence': exampleSentence,
-        'level': level,
-      });
+      await ApiService.post(
+        ApiConfig.vocabulary,
+        body: {
+          'word': word,
+          'translation': translation,
+          'exampleSentence': exampleSentence,
+          'level': level,
+        },
+      );
       await fetchSavedWords();
       return true;
     } catch (e) {

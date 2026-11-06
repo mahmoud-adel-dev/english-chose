@@ -169,3 +169,4 @@ class LogService extends ChangeNotifier {
     await Clipboard.setData(ClipboardData(text: buffer.toString()));
   }
 }
+

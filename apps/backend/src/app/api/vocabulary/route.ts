@@ -1,45 +1,49 @@
-import { CefrLevelEnum } from "@english-coach/contracts";
 import { prisma } from "@/lib/prisma";
+import { parseVocabularyInput } from "@/lib/vocabulary/vocabulary-policy";
 import { authenticateRequest, errorResponse, successResponse } from "../_helpers";
 
 export async function GET(request: Request) {
   const auth = await authenticateRequest(request);
   if (!auth) return errorResponse("UNAUTHORIZED", "Authentication required", 401);
-  const words = await prisma.savedWord.findMany({
-    where: { userId: auth.userId },
-    orderBy: { createdAt: "desc" },
-  });
-  return successResponse(words);
+  try {
+    const words = await prisma.savedWord.findMany({
+      where: { userId: auth.userId },
+      orderBy: { createdAt: "desc" },
+    });
+    return successResponse(words);
+  } catch (error) {
+    console.error("Vocabulary list database error:", error);
+    return errorResponse("VOCABULARY_STORAGE_UNAVAILABLE", "Saved words storage is unavailable", 503);
+  }
 }
 
 export async function POST(request: Request) {
   const auth = await authenticateRequest(request);
   if (!auth) return errorResponse("UNAUTHORIZED", "Authentication required", 401);
+  let input;
   try {
-    const body = await request.json();
-    const word = String(body.word ?? "").trim().toLowerCase();
-    const translation = String(body.translation ?? "").trim();
-    if (!/^[a-z]+(?:[-'][a-z]+)*$/i.test(word) || !translation) {
-      return errorResponse("VALIDATION_ERROR", "A valid English word and translation are required", 400);
-    }
-    const level = body.level ? CefrLevelEnum.parse(body.level) : undefined;
+    input = parseVocabularyInput(await request.json());
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Invalid vocabulary data";
+    return errorResponse("VALIDATION_ERROR", message, 400);
+  }
+
+  try {
     const saved = await prisma.savedWord.upsert({
-      where: { userId_word: { userId: auth.userId, word } },
+      where: { userId_word: { userId: auth.userId, word: input.word } },
       create: {
         userId: auth.userId,
-        word,
-        translation,
-        exampleSentence: body.exampleSentence ? String(body.exampleSentence).trim() : null,
-        level,
+        ...input,
       },
       update: {
-        translation,
-        exampleSentence: body.exampleSentence ? String(body.exampleSentence).trim() : null,
-        level,
+        translation: input.translation,
+        exampleSentence: input.exampleSentence,
+        level: input.level,
       },
     });
     return successResponse(saved, 201);
-  } catch {
-    return errorResponse("VALIDATION_ERROR", "Invalid vocabulary data", 400);
+  } catch (error) {
+    console.error("Vocabulary save database error:", error);
+    return errorResponse("VOCABULARY_STORAGE_UNAVAILABLE", "Could not save the word right now", 503);
   }
 }

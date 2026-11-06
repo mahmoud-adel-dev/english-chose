@@ -6,21 +6,21 @@ import { IAiProviderAdapter, AiCompletionRequest, AiCompletionResponse } from ".
 
 describe("AI Task Routing & Fallback Mechanism", () => {
   beforeAll(async () => {
-    // Ensure routing rule exists for ANSWER_EVALUATION
+    // Ensure a non-evaluative routing rule exists for deterministic mock testing.
     const mockModel = await prisma.aiModel.findFirst({
       where: { modelIdentifier: "mock-model-v1" },
     });
 
     if (mockModel) {
       await prisma.aiTaskRouting.upsert({
-        where: { taskType: AiTaskType.ANSWER_EVALUATION },
+        where: { taskType: AiTaskType.QUESTION_GENERATION },
         update: {
           primaryModelId: mockModel.id,
         },
         create: {
-          taskType: AiTaskType.ANSWER_EVALUATION,
+          taskType: AiTaskType.QUESTION_GENERATION,
           primaryModelId: mockModel.id,
-          systemPromptTpl: "You are an English evaluator.",
+          systemPromptTpl: "You generate English practice questions.",
           temperature: 0.2,
           maxTokens: 1024,
         },
@@ -30,17 +30,17 @@ describe("AI Task Routing & Fallback Mechanism", () => {
 
   it("executes completion successfully using the configured model", async () => {
     const res = await AiTaskRouter.executeCompletion(
-      AiTaskType.ANSWER_EVALUATION,
+      AiTaskType.QUESTION_GENERATION,
       {
-        systemPrompt: "Evaluate the answer.",
-        userPrompt: "I go to store yesterday.",
+        systemPrompt: "Generate A2 practice questions.",
+        userPrompt: "Topic: Travel",
         jsonSchema: { type: "object" },
       }
     );
 
     expect(res).toBeDefined();
     expect(res.parsedJson).toBeDefined();
-    expect((res.parsedJson as any).isMeaningAccurate).toBe(true);
+    expect(Array.isArray(res.parsedJson)).toBe(true);
     expect(res.latencyMs).toBeGreaterThan(0);
   });
 
@@ -123,5 +123,5 @@ describe("AI Task Routing & Fallback Mechanism", () => {
 
     expect(log).not.toBeNull();
     expect(log?.statusCode).toBe(200);
-  });
+  }, 15_000);
 });

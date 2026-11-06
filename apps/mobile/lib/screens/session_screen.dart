@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../config/theme.dart';
 import '../widgets/english_answer_formatter.dart';
+import '../widgets/savable_text.dart';
+import '../widgets/save_word_dialog.dart';
 import '../models/session.dart';
 import '../providers/app_provider.dart';
 import '../services/tts_service.dart';
@@ -23,6 +25,15 @@ class _SessionScreenState extends State<SessionScreen>
 
   int _currentQuestionIndex = 0;
   bool _isTtsSpeaking = false;
+
+  Future<void> _saveSelectedWord(String word, String sourceText) async {
+    await showSaveWordDialog(
+      context,
+      initialWord: word,
+      exampleSentence: sourceText,
+    );
+  }
+
   bool _isSttListening = false;
   String _liveTranscript = '';
   double _soundLevel = 0.0;
@@ -173,8 +184,10 @@ class _SessionScreenState extends State<SessionScreen>
               padding: const EdgeInsets.only(right: 8),
               child: Center(
                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: AppTheme.primaryColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
@@ -204,9 +217,7 @@ class _SessionScreenState extends State<SessionScreen>
           IconButton(
             tooltip: _autoPlayTts ? 'Auto-read ON' : 'Auto-read OFF',
             icon: Icon(
-              _autoPlayTts
-                  ? Icons.volume_up_rounded
-                  : Icons.volume_off_rounded,
+              _autoPlayTts ? Icons.volume_up_rounded : Icons.volume_off_rounded,
               color: _autoPlayTts
                   ? AppTheme.primaryColor
                   : const Color(0xFF94A3B8),
@@ -251,10 +262,7 @@ class _SessionScreenState extends State<SessionScreen>
               SizedBox(height: 16),
               Text(
                 'Generating your personalized exercises...',
-                style: TextStyle(
-                  color: Color(0xFF64748B),
-                  fontSize: 14,
-                ),
+                style: TextStyle(color: Color(0xFF64748B), fontSize: 14),
               ),
             ],
           ),
@@ -270,8 +278,11 @@ class _SessionScreenState extends State<SessionScreen>
       return _buildNoActiveSession(provider);
     }
 
-    final question = session
-        .questions[_currentQuestionIndex.clamp(0, session.questions.length - 1)];
+    final question =
+        session.questions[_currentQuestionIndex.clamp(
+          0,
+          session.questions.length - 1,
+        )];
 
     // Auto-play TTS when question changes
     if (_autoPlayTts && !_isTtsSpeaking && !_isSttListening) {
@@ -289,8 +300,9 @@ class _SessionScreenState extends State<SessionScreen>
           child: LinearProgressIndicator(
             value: (_currentQuestionIndex + 1) / session.questions.length,
             backgroundColor: const Color(0xFFE2E8F0),
-            valueColor:
-                const AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+            valueColor: const AlwaysStoppedAnimation<Color>(
+              AppTheme.primaryColor,
+            ),
             minHeight: 8,
           ),
         ),
@@ -313,7 +325,10 @@ class _SessionScreenState extends State<SessionScreen>
   }
 
   Widget _buildQuestionCard(
-      SessionQuestionModel question, DailySessionModel session, AppProvider provider) {
+    SessionQuestionModel question,
+    DailySessionModel session,
+    AppProvider provider,
+  ) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -325,8 +340,10 @@ class _SessionScreenState extends State<SessionScreen>
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: AppTheme.primaryColor.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(8),
@@ -385,8 +402,10 @@ class _SessionScreenState extends State<SessionScreen>
             const SizedBox(height: 16),
 
             // Question text
-            Text(
+            SavableText(
               question.promptText,
+              onSaveWord: (word) =>
+                  _saveSelectedWord(word, question.promptText),
               style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
@@ -409,12 +428,17 @@ class _SessionScreenState extends State<SessionScreen>
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.lightbulb_outline,
-                        size: 18, color: AppTheme.warningColor),
+                    const Icon(
+                      Icons.lightbulb_outline,
+                      size: 18,
+                      color: AppTheme.warningColor,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: Text(
+                      child: SavableText(
                         'Hint: ${question.contextHint}',
+                        onSaveWord: (word) =>
+                            _saveSelectedWord(word, question.contextHint!),
                         style: const TextStyle(
                           color: Color(0xFF475569),
                           fontSize: 13,
@@ -469,7 +493,10 @@ class _SessionScreenState extends State<SessionScreen>
   }
 
   Widget _buildLearningSupportSection(
-      AppProvider provider, DailySessionModel session, SessionQuestionModel question) {
+    AppProvider provider,
+    DailySessionModel session,
+    SessionQuestionModel question,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -478,7 +505,11 @@ class _SessionScreenState extends State<SessionScreen>
         const SizedBox(height: 12),
         Row(
           children: [
-            const Icon(Icons.school_rounded, size: 16, color: AppTheme.primaryColor),
+            const Icon(
+              Icons.school_rounded,
+              size: 16,
+              color: AppTheme.primaryColor,
+            ),
             const SizedBox(width: 6),
             const Text(
               'Learning Support:',
@@ -497,7 +528,11 @@ class _SessionScreenState extends State<SessionScreen>
                 },
                 child: const Row(
                   children: [
-                    Icon(Icons.close_rounded, size: 14, color: Color(0xFF94A3B8)),
+                    Icon(
+                      Icons.close_rounded,
+                      size: 14,
+                      color: Color(0xFF94A3B8),
+                    ),
                     SizedBox(width: 2),
                     Text(
                       'Dismiss',
@@ -560,14 +595,18 @@ class _SessionScreenState extends State<SessionScreen>
                   _activeSupportAction == 'TRANSLATE'
                       ? 'Translating question...'
                       : (_activeSupportAction == 'EXPLAIN'
-                          ? 'Generating explanation...'
-                          : 'Writing model answer...'),
-                  style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                            ? 'Generating explanation...'
+                            : 'Writing model answer...'),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF64748B),
+                  ),
                 ),
               ],
             ),
           ),
-        ] else if (provider.learningSupportContent != null && _activeSupportAction != null) ...[
+        ] else if (provider.learningSupportContent != null &&
+            _activeSupportAction != null) ...[
           const SizedBox(height: 12),
           _buildSupportContentCard(provider, _activeSupportAction!),
         ],
@@ -601,7 +640,9 @@ class _SessionScreenState extends State<SessionScreen>
               Icon(
                 isModelAnswer
                     ? Icons.menu_book_rounded
-                    : (isTranslate ? Icons.translate_rounded : Icons.psychology_rounded),
+                    : (isTranslate
+                          ? Icons.translate_rounded
+                          : Icons.psychology_rounded),
                 size: 16,
                 color: isModelAnswer
                     ? const Color(0xFFB45309)
@@ -611,7 +652,9 @@ class _SessionScreenState extends State<SessionScreen>
               Text(
                 isModelAnswer
                     ? 'Model Answer (For Reference Only)'
-                    : (isTranslate ? 'Arabic Translation' : 'Teacher Explanation'),
+                    : (isTranslate
+                          ? 'Arabic Translation'
+                          : 'Teacher Explanation'),
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 12,
@@ -646,8 +689,10 @@ class _SessionScreenState extends State<SessionScreen>
             ),
           ],
           const SizedBox(height: 8),
-          Text(
+          SavableText(
             provider.learningSupportContent!,
+            onSaveWord: (word) =>
+                _saveSelectedWord(word, provider.learningSupportContent!),
             textDirection: isTranslate ? TextDirection.rtl : TextDirection.ltr,
             style: TextStyle(
               fontSize: 13,
@@ -671,7 +716,9 @@ class _SessionScreenState extends State<SessionScreen>
     required DailySessionModel session,
     required SessionQuestionModel question,
   }) {
-    final isSelected = _activeSupportAction == action && provider.learningSupportContent != null;
+    final isSelected =
+        _activeSupportAction == action &&
+        provider.learningSupportContent != null;
     return ActionChip(
       avatar: Icon(
         icon,
@@ -686,11 +733,11 @@ class _SessionScreenState extends State<SessionScreen>
           color: isSelected ? Colors.white : const Color(0xFF334155),
         ),
       ),
-      backgroundColor: isSelected ? AppTheme.primaryColor : const Color(0xFFF1F5F9),
+      backgroundColor: isSelected
+          ? AppTheme.primaryColor
+          : const Color(0xFFF1F5F9),
       side: BorderSide(
-        color: isSelected
-            ? AppTheme.primaryColor
-            : const Color(0xFFCBD5E1),
+        color: isSelected ? AppTheme.primaryColor : const Color(0xFFCBD5E1),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       onPressed: provider.isLoading
@@ -711,7 +758,8 @@ class _SessionScreenState extends State<SessionScreen>
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(
-                      provider.errorMessage ?? 'Learning support is currently unavailable.',
+                      provider.errorMessage ??
+                          'Learning support is currently unavailable.',
                     ),
                     backgroundColor: AppTheme.errorColor,
                   ),
@@ -747,14 +795,14 @@ class _SessionScreenState extends State<SessionScreen>
           ),
           style: OutlinedButton.styleFrom(
             backgroundColor: isActive
-                ? AppTheme.primaryColor
-                    .withValues(alpha: 0.7 + (_speakerPulseController.value * 0.3))
+                ? AppTheme.primaryColor.withValues(
+                    alpha: 0.7 + (_speakerPulseController.value * 0.3),
+                  )
                 : Colors.transparent,
             side: BorderSide(
               color: AppTheme.primaryColor.withValues(alpha: 0.4),
             ),
-            padding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
             ),
@@ -765,7 +813,9 @@ class _SessionScreenState extends State<SessionScreen>
   }
 
   Widget _buildAudioInputSection(
-      AppProvider provider, SessionQuestionModel question) {
+    AppProvider provider,
+    SessionQuestionModel question,
+  ) {
     final isAudio = _isAudioQuestion(question.questionType);
 
     return Card(
@@ -843,7 +893,9 @@ class _SessionScreenState extends State<SessionScreen>
   }
 
   Widget _buildMicrophoneInput(
-      AppProvider provider, SessionQuestionModel question) {
+    AppProvider provider,
+    SessionQuestionModel question,
+  ) {
     return Column(
       children: [
         // Live transcript display
@@ -878,8 +930,11 @@ class _SessionScreenState extends State<SessionScreen>
                         ),
                       ),
                     ] else ...[
-                      const Icon(Icons.text_snippet_outlined,
-                          size: 14, color: Color(0xFF94A3B8)),
+                      const Icon(
+                        Icons.text_snippet_outlined,
+                        size: 14,
+                        color: Color(0xFF94A3B8),
+                      ),
                       const SizedBox(width: 6),
                       const Text(
                         'Your speech:',
@@ -915,8 +970,9 @@ class _SessionScreenState extends State<SessionScreen>
         AnimatedBuilder(
           animation: _micPulseController,
           builder: (context, child) {
-            final scale =
-                _isSttListening ? 1.0 + (_micPulseController.value * 0.1) : 1.0;
+            final scale = _isSttListening
+                ? 1.0 + (_micPulseController.value * 0.1)
+                : 1.0;
             return Transform.scale(
               scale: scale,
               child: GestureDetector(
@@ -931,10 +987,11 @@ class _SessionScreenState extends State<SessionScreen>
                         : AppTheme.primaryColor,
                     boxShadow: [
                       BoxShadow(
-                        color: (_isSttListening
-                                ? AppTheme.errorColor
-                                : AppTheme.primaryColor)
-                            .withValues(alpha: 0.3),
+                        color:
+                            (_isSttListening
+                                    ? AppTheme.errorColor
+                                    : AppTheme.primaryColor)
+                                .withValues(alpha: 0.3),
                         blurRadius: _isSttListening ? 20 : 10,
                         spreadRadius: _isSttListening ? 4 : 0,
                       ),
@@ -952,9 +1009,7 @@ class _SessionScreenState extends State<SessionScreen>
         ),
         const SizedBox(height: 12),
         Text(
-          _isSttListening
-              ? 'Tap to stop recording'
-              : 'Tap to start speaking',
+          _isSttListening ? 'Tap to stop recording' : 'Tap to start speaking',
           style: const TextStyle(
             color: Color(0xFF64748B),
             fontSize: 13,
@@ -998,12 +1053,14 @@ class _SessionScreenState extends State<SessionScreen>
                           width: 18,
                           height: 18,
                           child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white),
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
                         )
                       : const Icon(Icons.send_rounded),
-                  label: Text(provider.isLoading
-                      ? 'Evaluating...'
-                      : 'Submit Answer'),
+                  label: Text(
+                    provider.isLoading ? 'Evaluating...' : 'Submit Answer',
+                  ),
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
@@ -1051,7 +1108,8 @@ class _SessionScreenState extends State<SessionScreen>
           inputFormatters: [englishAnswerFormatter],
           decoration: const InputDecoration(
             hintText: 'Type your answer here in English...',
-            helperText: 'English letters only. Arabic letters are not accepted.',
+            helperText:
+                'English letters only. Arabic letters are not accepted.',
           ),
         ),
         const SizedBox(height: 16),
@@ -1064,11 +1122,14 @@ class _SessionScreenState extends State<SessionScreen>
                   width: 18,
                   height: 18,
                   child: CircularProgressIndicator(
-                      strokeWidth: 2, color: Colors.white),
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
                 )
               : const Icon(Icons.send_rounded),
           label: Text(
-              provider.isLoading ? 'Evaluating with AI...' : 'Submit Answer'),
+            provider.isLoading ? 'Evaluating with AI...' : 'Submit Answer',
+          ),
         ),
       ],
     );
@@ -1161,7 +1222,8 @@ class _SessionScreenState extends State<SessionScreen>
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  provider.errorMessage ?? 'Failed to submit answer. Try again.',
+                  provider.errorMessage ??
+                      'Failed to submit answer. Try again.',
                 ),
               ),
             ],
@@ -1179,7 +1241,9 @@ class _SessionScreenState extends State<SessionScreen>
   }
 
   Widget _buildEvaluationFeedback(
-      AppProvider provider, DailySessionModel session) {
+    AppProvider provider,
+    DailySessionModel session,
+  ) {
     final eval = provider.lastEvaluation!;
     final isLast = _currentQuestionIndex >= session.questions.length - 1;
 
@@ -1222,8 +1286,10 @@ class _SessionScreenState extends State<SessionScreen>
                   ),
                 ),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: AppTheme.primaryColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
@@ -1264,8 +1330,10 @@ class _SessionScreenState extends State<SessionScreen>
               child: Row(
                 children: [
                   Expanded(
-                    child: Text(
+                    child: SavableText(
                       eval.correctedSentence,
+                      onSaveWord: (word) =>
+                          _saveSelectedWord(word, eval.correctedSentence),
                       style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
@@ -1300,8 +1368,10 @@ class _SessionScreenState extends State<SessionScreen>
             const SizedBox(height: 12),
 
             // Explanation
-            Text(
+            SavableText(
               eval.explanationMarkdown,
+              onSaveWord: (word) =>
+                  _saveSelectedWord(word, eval.explanationMarkdown),
               style: const TextStyle(
                 fontSize: 13,
                 color: Color(0xFF475569),
@@ -1314,24 +1384,35 @@ class _SessionScreenState extends State<SessionScreen>
               const SizedBox(height: 12),
               const Divider(),
               const SizedBox(height: 8),
-              ...eval.identifiedErrors.map((err) => Padding(
-                    padding: const EdgeInsets.only(bottom: 6),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Icon(Icons.close,
-                            color: AppTheme.errorColor, size: 16),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            '"${err.wrongSnippet}" → "${err.correctSnippet}": ${err.explanation}',
-                            style: const TextStyle(
-                                fontSize: 12, color: Color(0xFF475569)),
+              ...eval.identifiedErrors.map(
+                (err) => Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(
+                        Icons.close,
+                        color: AppTheme.errorColor,
+                        size: 16,
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: SavableText(
+                          '"${err.wrongSnippet}" → "${err.correctSnippet}": ${err.explanation}',
+                          onSaveWord: (word) => _saveSelectedWord(
+                            word,
+                            '${err.correctSnippet}. ${err.explanation}',
+                          ),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF475569),
                           ),
                         ),
-                      ],
-                    ),
-                  )),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ],
             const SizedBox(height: 16),
 
@@ -1363,9 +1444,11 @@ class _SessionScreenState extends State<SessionScreen>
                           provider.clearError();
                         }
                       },
-                icon: Icon(isLast
-                    ? Icons.check_circle_rounded
-                    : Icons.arrow_forward_rounded),
+                icon: Icon(
+                  isLast
+                      ? Icons.check_circle_rounded
+                      : Icons.arrow_forward_rounded,
+                ),
                 label: Text(isLast ? 'Finish Session' : 'Next Question'),
               ),
             ),
@@ -1382,11 +1465,9 @@ class _SessionScreenState extends State<SessionScreen>
         const SizedBox(width: 6),
         _buildScoreChip('Vocab', eval.vocabularyScore, Icons.menu_book),
         const SizedBox(width: 6),
-        _buildScoreChip(
-            'Fluency', eval.fluencyScore, Icons.record_voice_over),
+        _buildScoreChip('Fluency', eval.fluencyScore, Icons.record_voice_over),
         const SizedBox(width: 6),
-        _buildScoreChip(
-            'Pronun.', eval.pronunciationScore, Icons.hearing),
+        _buildScoreChip('Pronun.', eval.pronunciationScore, Icons.hearing),
       ],
     );
   }
@@ -1395,8 +1476,8 @@ class _SessionScreenState extends State<SessionScreen>
     final color = score >= 80
         ? AppTheme.successColor
         : score >= 50
-            ? AppTheme.warningColor
-            : AppTheme.errorColor;
+        ? AppTheme.warningColor
+        : AppTheme.errorColor;
 
     return Expanded(
       child: Container(
@@ -1420,10 +1501,7 @@ class _SessionScreenState extends State<SessionScreen>
             ),
             Text(
               label,
-              style: const TextStyle(
-                fontSize: 10,
-                color: Color(0xFF64748B),
-              ),
+              style: const TextStyle(fontSize: 10, color: Color(0xFF64748B)),
             ),
           ],
         ),
@@ -1432,11 +1510,16 @@ class _SessionScreenState extends State<SessionScreen>
   }
 
   Widget _buildSessionCompletedView(
-      AppProvider provider, Map<String, dynamic> summary) {
+    AppProvider provider,
+    Map<String, dynamic> summary,
+  ) {
     final avgScore = (summary['averageScore'] as num?)?.toDouble() ?? 80.0;
-    final grammarScore = (summary['grammarScore'] as num?)?.toDouble() ?? avgScore;
-    final vocabScore = (summary['vocabularyScore'] as num?)?.toDouble() ?? avgScore;
-    final fluencyScore = (summary['fluencyScore'] as num?)?.toDouble() ?? avgScore;
+    final grammarScore =
+        (summary['grammarScore'] as num?)?.toDouble() ?? avgScore;
+    final vocabScore =
+        (summary['vocabularyScore'] as num?)?.toDouble() ?? avgScore;
+    final fluencyScore =
+        (summary['fluencyScore'] as num?)?.toDouble() ?? avgScore;
     final streak = provider.profile?.dailyStreak ?? 1;
 
     final scoreColor = avgScore >= 80
@@ -1514,9 +1597,21 @@ class _SessionScreenState extends State<SessionScreen>
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      _buildSummaryMetric('Grammar', '${grammarScore.round()}%', Icons.spellcheck),
-                      _buildSummaryMetric('Vocabulary', '${vocabScore.round()}%', Icons.menu_book),
-                      _buildSummaryMetric('Fluency', '${fluencyScore.round()}%', Icons.record_voice_over),
+                      _buildSummaryMetric(
+                        'Grammar',
+                        '${grammarScore.round()}%',
+                        Icons.spellcheck,
+                      ),
+                      _buildSummaryMetric(
+                        'Vocabulary',
+                        '${vocabScore.round()}%',
+                        Icons.menu_book,
+                      ),
+                      _buildSummaryMetric(
+                        'Fluency',
+                        '${fluencyScore.round()}%',
+                        Icons.record_voice_over,
+                      ),
                     ],
                   ),
                 ],
@@ -1596,10 +1691,7 @@ class _SessionScreenState extends State<SessionScreen>
         ),
         Text(
           label,
-          style: const TextStyle(
-            fontSize: 11,
-            color: Color(0xFF64748B),
-          ),
+          style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
         ),
       ],
     );
@@ -1724,8 +1816,11 @@ class _SessionScreenState extends State<SessionScreen>
                           SnackBar(
                             content: Row(
                               children: [
-                                const Icon(Icons.error_outline,
-                                    color: Colors.white, size: 20),
+                                const Icon(
+                                  Icons.error_outline,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
@@ -1752,15 +1847,21 @@ class _SessionScreenState extends State<SessionScreen>
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white),
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
                     )
                   : const Icon(Icons.rocket_launch_rounded),
-              label: Text(provider.isLoading
-                  ? 'Generating Exercises...'
-                  : 'Start Session Now'),
+              label: Text(
+                provider.isLoading
+                    ? 'Generating Exercises...'
+                    : 'Start Session Now',
+              ),
               style: ElevatedButton.styleFrom(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 16,
+                ),
               ),
             ),
 
@@ -1776,8 +1877,11 @@ class _SessionScreenState extends State<SessionScreen>
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.warning_amber_rounded,
-                        size: 18, color: AppTheme.errorColor),
+                    const Icon(
+                      Icons.warning_amber_rounded,
+                      size: 18,
+                      color: AppTheme.errorColor,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -1790,8 +1894,11 @@ class _SessionScreenState extends State<SessionScreen>
                     ),
                     GestureDetector(
                       onTap: () => provider.clearError(),
-                      child: const Icon(Icons.close,
-                          size: 16, color: Color(0xFF991B1B)),
+                      child: const Icon(
+                        Icons.close,
+                        size: 16,
+                        color: Color(0xFF991B1B),
+                      ),
                     ),
                   ],
                 ),
@@ -1810,7 +1917,8 @@ class _SessionScreenState extends State<SessionScreen>
         color: AppTheme.primaryColor.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-            color: AppTheme.primaryColor.withValues(alpha: 0.15)),
+          color: AppTheme.primaryColor.withValues(alpha: 0.15),
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

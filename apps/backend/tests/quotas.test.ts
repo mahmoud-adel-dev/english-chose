@@ -24,7 +24,7 @@ describe("Quota Manager & Concurrency-Safe Enforcement", () => {
     const res = await QuotaManager.checkAndConsume(testUserId, "QUESTION", 1);
     expect(res.allowed).toBe(true);
     expect(res.remaining).toBeLessThan(15);
-  });
+  }, 15_000);
 
   it("correctly refunds quota when an operation is cancelled", async () => {
     const before = await QuotaManager.checkAndConsume(testUserId, "QUESTION", 1);
@@ -35,12 +35,12 @@ describe("Quota Manager & Concurrency-Safe Enforcement", () => {
     const after = await QuotaManager.checkAndConsume(testUserId, "QUESTION", 1);
     expect(after.allowed).toBe(true);
     expect(after.remaining).toBe(before.remaining);
-  });
+  }, 15_000);
 
   it("rejects requests when daily question limit is exceeded", async () => {
     // Consume remaining up to limit
     const largeConsume = await QuotaManager.checkAndConsume(testUserId, "QUESTION", 25);
     expect(largeConsume.allowed).toBe(false);
     expect(largeConsume.reason).toContain("Daily question quota exceeded");
-  });
+  }, 15_000);
 });

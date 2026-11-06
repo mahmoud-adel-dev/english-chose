@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { authenticateRequest, successResponse, errorResponse } from "../_helpers";
 import { LearningProfileDto, CefrLevelEnum } from "@english-coach/contracts";
+import { parseRequestedCurrentLevel } from "@/lib/profile/level-policy";
 
 export async function GET(request: Request) {
   try {
@@ -47,11 +48,27 @@ export async function PUT(request: Request) {
 
     const body = await request.json();
     const targetLevelParsed = body.targetLevel ? CefrLevelEnum.safeParse(body.targetLevel) : null;
+    let selectedCurrentLevel = null;
+    try {
+      selectedCurrentLevel = parseRequestedCurrentLevel(body.currentLevel);
+    } catch {
+      return errorResponse("VALIDATION_ERROR", "Current level must be A1, A2, B1, B2, C1, or C2", 400);
+    }
 
     const updated = await prisma.learningProfile.update({
       where: { userId: auth.userId },
       data: {
         ...(targetLevelParsed?.success ? { targetLevel: targetLevelParsed.data } : {}),
+        ...(selectedCurrentLevel
+          ? {
+              currentLevel: selectedCurrentLevel,
+              overallScore: 0,
+              grammarScore: 0,
+              vocabularyScore: 0,
+              fluencyScore: 0,
+              pronunciationScore: 0,
+            }
+          : {}),
       },
     });
 
@@ -75,4 +92,3 @@ export async function PUT(request: Request) {
     return errorResponse("SERVER_ERROR", "Failed to update profile", 500);
   }
 }
-

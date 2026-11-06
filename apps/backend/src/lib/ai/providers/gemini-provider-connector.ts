@@ -58,7 +58,7 @@ export class GeminiProviderConnector implements ProviderConnector {
       }));
   }
 
-  async fetchProviderQuota(): Promise<ProviderQuotaSnapshot> {
+  async fetchProviderQuota(_credentials: ProviderCredentials): Promise<ProviderQuotaSnapshot> {
     return {
       availability: "UNSUPPORTED",
       source: "Gemini Developer API",

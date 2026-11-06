@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   assessmentPromptForLevel,
+  determineAssessedLevel,
   nextAdaptiveLevel,
   normalizeScore,
   validateEnglishAnswer,
 } from "../src/lib/assessment/answer-policy";
+import { allowsMockFallback } from "../src/lib/ai/task-router";
+import { AiTaskType } from "@prisma/client";
 
 describe("English answer policy", () => {
   it.each([
@@ -52,5 +55,50 @@ describe("English answer policy", () => {
       level: "B1",
       text: expect.stringContaining("English"),
     });
+  });
+
+  it("places a learner with a 48 average at A1 even if one harder item passed", () => {
+    expect(
+      determineAssessedLevel([
+        { targetLevel: "B1", score: 62 },
+        { targetLevel: "B1", score: 44 },
+        { targetLevel: "A2", score: 42 },
+        { targetLevel: "A1", score: 45 },
+        { targetLevel: "A1", score: 46 },
+        { targetLevel: "A1", score: 49 },
+      ])
+    ).toMatchObject({ level: "A1", averageScore: 48 });
+  });
+
+  it("requires repeated evidence instead of promoting from one high item", () => {
+    expect(
+      determineAssessedLevel([
+        { targetLevel: "C1", score: 95 },
+        { targetLevel: "B1", score: 25 },
+        { targetLevel: "A2", score: 30 },
+        { targetLevel: "A1", score: 30 },
+        { targetLevel: "A1", score: 35 },
+        { targetLevel: "A1", score: 40 },
+      ]).level
+    ).toBe("A1");
+  });
+
+  it("recognizes consistent A2 evidence", () => {
+    expect(
+      determineAssessedLevel([
+        { targetLevel: "A2", score: 68 },
+        { targetLevel: "A2", score: 70 },
+        { targetLevel: "A2", score: 66 },
+        { targetLevel: "B1", score: 58 },
+        { targetLevel: "A2", score: 72 },
+        { targetLevel: "A2", score: 69 },
+      ]).level
+    ).toBe("A2");
+  });
+
+  it("forbids deterministic mock fallback for learner evaluation tasks", () => {
+    expect(allowsMockFallback(AiTaskType.ANSWER_EVALUATION)).toBe(false);
+    expect(allowsMockFallback(AiTaskType.CEFR_ASSESSMENT)).toBe(false);
+    expect(allowsMockFallback(AiTaskType.QUESTION_GENERATION)).toBe(true);
   });
 });

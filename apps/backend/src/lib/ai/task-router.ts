@@ -113,10 +113,10 @@ export class AiTaskRouter {
       const adapter = await this.getConfiguredAdapter(primary.provider);
       if (adapter) {
         try {
-          const res = await this.executeWithTimeout(
+          const res = requireAllowedResult(taskType, await this.executeWithTimeout(
             () => adapter.generateCompletion(primary.modelIdentifier, mergedReq),
             timeoutMs
-          );
+          ));
 
           // Log successful primary attempt
           await this.logUsage({
@@ -169,10 +169,10 @@ export class AiTaskRouter {
       const fallbackAdapter = await this.getConfiguredAdapter(fallback.provider);
       if (fallbackAdapter) {
         try {
-          const res = await this.executeWithTimeout(
+          const res = requireAllowedResult(taskType, await this.executeWithTimeout(
             () => fallbackAdapter.generateCompletion(fallback.modelIdentifier, mergedReq),
             timeoutMs
-          );
+          ));
 
           await this.logUsage({
             userId: context?.userId,
@@ -218,10 +218,10 @@ export class AiTaskRouter {
       const geminiAdapter = new GeminiAiProviderAdapter(envGeminiKey);
       for (const modelId of workingModels) {
         try {
-          const res = await this.executeWithTimeout(
+          const res = requireAllowedResult(taskType, await this.executeWithTimeout(
             () => geminiAdapter.generateCompletion(modelId, mergedReq),
             timeoutMs
-          );
+          ));
           return res;
         } catch (geminiErr) {
           console.warn(`[AiTaskRouter] Server environment Gemini fallback (${modelId}) encountered error:`, geminiErr);
@@ -230,6 +230,10 @@ export class AiTaskRouter {
     }
 
     // 5. Built-in Deterministic Mock Fallback (guarantees zero downtime / no 500 crashes)
+    if (!allowsMockFallback(taskType)) {
+      throw new Error(`No real AI provider is available for ${taskType}`);
+    }
+
     console.warn(`[AiTaskRouter] Using deterministic fallback adapter for ${taskType}`);
     const mockAdapter = this.getAdapter("mock-provider") || new MockAiProviderAdapter();
     return await mockAdapter.generateCompletion("mock-default", mergedReq);
@@ -335,4 +339,19 @@ export class AiTaskRouter {
       console.error("[AiTaskRouter] Failed to record usage log:", e);
     }
   }
+}
+export function allowsMockFallback(taskType: AiTaskType): boolean {
+  const realEvaluationTasks: AiTaskType[] = [
+    AiTaskType.ANSWER_EVALUATION,
+    AiTaskType.CEFR_ASSESSMENT,
+    AiTaskType.PRONUNCIATION_ASSESSMENT,
+  ];
+  return !realEvaluationTasks.includes(taskType);
+}
+
+function requireAllowedResult(taskType: AiTaskType, result: AiCompletionResponse) {
+  if (!allowsMockFallback(taskType) && result.modelIdentifier.startsWith("mock-")) {
+    throw new Error(`A real AI provider is required for ${taskType}`);
+  }
+  return result;
 }

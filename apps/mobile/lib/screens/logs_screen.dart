@@ -408,3 +408,4 @@ class _LogItemCard extends StatelessWidget {
     }
   }
 }
+

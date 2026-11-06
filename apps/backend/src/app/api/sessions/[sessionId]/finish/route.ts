@@ -70,3 +70,4 @@ export async function POST(
     return errorResponse("SERVER_ERROR", "Failed to finish session", 500);
   }
 }
+
