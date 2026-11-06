@@ -5,6 +5,7 @@ import '../models/session.dart';
 import '../models/evaluation.dart';
 import '../models/assessment.dart';
 import '../services/api_service.dart';
+import '../services/google_sign_in_service.dart';
 
 class AppProvider with ChangeNotifier {
   UserModel? _user;
@@ -17,6 +18,7 @@ class AppProvider with ChangeNotifier {
   List<Map<String, dynamic>> _savedWords = [];
   String? _learningSupportContent;
   Map<String, dynamic>? _lastSessionSummary;
+  Map<String, dynamic>? _googleAuthConfig;
 
   // Admin states
   Map<String, dynamic>? _adminAnalytics;
@@ -25,6 +27,7 @@ class AppProvider with ChangeNotifier {
   List<dynamic> _adminModels = [];
   List<dynamic> _adminRoutings = [];
   List<dynamic> _adminUsers = [];
+  Map<String, dynamic>? _adminGoogleAuthConfig;
   bool _isAdminLoading = false;
 
   bool _isLoading = false;
@@ -40,6 +43,10 @@ class AppProvider with ChangeNotifier {
   List<Map<String, dynamic>> get savedWords => _savedWords;
   String? get learningSupportContent => _learningSupportContent;
   Map<String, dynamic>? get lastSessionSummary => _lastSessionSummary;
+  Map<String, dynamic>? get googleAuthConfig => _googleAuthConfig;
+  bool get isGoogleLoginEnabled =>
+      _googleAuthConfig?['enabled'] == true &&
+      (_googleAuthConfig?['webClientId']?.toString().isNotEmpty ?? false);
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   bool get isAuthenticated => _user != null;
@@ -52,6 +59,7 @@ class AppProvider with ChangeNotifier {
   List<dynamic> get adminModels => _adminModels;
   List<dynamic> get adminRoutings => _adminRoutings;
   List<dynamic> get adminUsers => _adminUsers;
+  Map<String, dynamic>? get adminGoogleAuthConfig => _adminGoogleAuthConfig;
   bool get isAdminLoading => _isAdminLoading;
 
   void clearError() {
@@ -124,6 +132,43 @@ class AppProvider with ChangeNotifier {
     }
   }
 
+  Future<void> fetchGoogleAuthConfig() async {
+    try {
+      final data = await ApiService.get(ApiConfig.googleAuthConfig);
+      _googleAuthConfig = Map<String, dynamic>.from(data as Map);
+    } catch (_) {
+      _googleAuthConfig = const {'enabled': false, 'webClientId': null};
+    }
+    notifyListeners();
+  }
+
+  Future<bool> loginWithGoogle() async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      final clientId = _googleAuthConfig?['webClientId']?.toString() ?? '';
+      final idToken = await GoogleSignInService.instance.signIn(clientId);
+      final data = await ApiService.post(
+        ApiConfig.googleLogin,
+        body: {'idToken': idToken},
+      );
+      await ApiService.setToken(data['token']);
+      _user = UserModel.fromJson(data['user']);
+      _profile = LearningProfileModel.fromJson(data['profile']);
+      await fetchQuota();
+      if (isAdmin) await fetchAdminData();
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<bool> register(String name, String email, String password) async {
     _isLoading = true;
     _errorMessage = null;
@@ -154,6 +199,9 @@ class AppProvider with ChangeNotifier {
   }
 
   Future<void> logout() async {
+    try {
+      await GoogleSignInService.instance.signOut();
+    } catch (_) {}
     await ApiService.removeToken();
     _user = null;
     _profile = null;
@@ -167,6 +215,7 @@ class AppProvider with ChangeNotifier {
     _adminModels = [];
     _adminRoutings = [];
     _adminUsers = [];
+    _adminGoogleAuthConfig = null;
     notifyListeners();
   }
 
@@ -451,11 +500,30 @@ class AppProvider with ChangeNotifier {
 
       final usersData = await ApiService.get(ApiConfig.adminUsers);
       _adminUsers = usersData as List<dynamic>;
+
+      final googleAuthData = await ApiService.get(ApiConfig.adminGoogleAuth);
+      _adminGoogleAuthConfig = Map<String, dynamic>.from(googleAuthData as Map);
     } catch (e) {
       debugPrint('Admin fetch error: $e');
     } finally {
       _isAdminLoading = false;
       notifyListeners();
+    }
+  }
+
+  Future<bool> saveGoogleAuthConfig(Map<String, dynamic> value) async {
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      final data = await ApiService.put(ApiConfig.adminGoogleAuth, body: value);
+      _adminGoogleAuthConfig = Map<String, dynamic>.from(data as Map);
+      await fetchGoogleAuthConfig();
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      notifyListeners();
+      return false;
     }
   }
 

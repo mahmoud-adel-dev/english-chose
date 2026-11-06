@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_recognition_error.dart';
+import 'speech_dictation_policy.dart';
 
 /// Speech-to-Text service for English Coach.
 /// Captures student's spoken English and converts it to text for AI evaluation.
@@ -14,6 +15,7 @@ class SttService {
   bool _isInitialized = false;
   bool _isListening = false;
   String _currentTranscript = '';
+  String _transcriptPrefix = '';
   double _confidence = 0.0;
   String? _lastError;
 
@@ -59,7 +61,7 @@ class SttService {
   }
 
   /// Start listening for English speech.
-  Future<bool> startListening() async {
+  Future<bool> startListening({String existingTranscript = ''}) async {
     if (!_isInitialized) {
       final ok = await initialize();
       if (!ok) return false;
@@ -67,7 +69,8 @@ class SttService {
 
     if (_isListening) return true;
 
-    _currentTranscript = '';
+    _transcriptPrefix = existingTranscript.trim();
+    _currentTranscript = _transcriptPrefix;
     _confidence = 0.0;
     _lastError = null;
 
@@ -80,6 +83,8 @@ class SttService {
           cancelOnError: false,
           partialResults: true,
           localeId: 'en_US',
+          listenFor: SpeechDictationPolicy.listenFor,
+          pauseFor: SpeechDictationPolicy.pauseFor,
         ),
       );
 
@@ -117,12 +122,16 @@ class SttService {
     }
     _isListening = false;
     _currentTranscript = '';
+    _transcriptPrefix = '';
     _confidence = 0.0;
     onListeningStopped?.call();
   }
 
   void _onSpeechResult(SpeechRecognitionResult result) {
-    _currentTranscript = result.recognizedWords;
+    _currentTranscript = SpeechDictationPolicy.mergeTranscript(
+      _transcriptPrefix,
+      result.recognizedWords,
+    );
     _confidence = result.confidence;
     onResult?.call(_currentTranscript);
 
@@ -146,7 +155,9 @@ class SttService {
 
   void _onError(SpeechRecognitionError error) {
     _lastError = error.errorMsg;
-    debugPrint('[STT] Error: ${error.errorMsg} (permanent: ${error.permanent})');
+    debugPrint(
+      '[STT] Error: ${error.errorMsg} (permanent: ${error.permanent})',
+    );
     if (error.permanent) {
       _isListening = false;
       onListeningStopped?.call();
@@ -167,4 +178,3 @@ class SttService {
     _isListening = false;
   }
 }
-

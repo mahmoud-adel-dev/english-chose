@@ -203,16 +203,19 @@ class _SessionScreenState extends State<SessionScreen>
                 ),
               ),
             ),
-          IconButton(
-            tooltip: 'Diagnostic Logs',
-            icon: const Icon(Icons.receipt_long_rounded),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const LocalLogsScreen()),
-              );
-            },
-          ),
+          if (provider.isAdmin)
+            IconButton(
+              tooltip: 'Diagnostic Logs',
+              icon: const Icon(Icons.receipt_long_rounded),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => LocalLogsScreen(isAdmin: provider.isAdmin),
+                  ),
+                );
+              },
+            ),
           // Auto-play TTS toggle
           IconButton(
             tooltip: _autoPlayTts ? 'Auto-read ON' : 'Auto-read OFF',
@@ -922,7 +925,7 @@ class _SessionScreenState extends State<SessionScreen>
                       _buildSoundLevelIndicator(),
                       const SizedBox(width: 8),
                       const Text(
-                        'Listening...',
+                        'Listening — take your time...',
                         style: TextStyle(
                           color: AppTheme.primaryColor,
                           fontSize: 12,
@@ -1009,7 +1012,11 @@ class _SessionScreenState extends State<SessionScreen>
         ),
         const SizedBox(height: 12),
         Text(
-          _isSttListening ? 'Tap to stop recording' : 'Tap to start speaking',
+          _isSttListening
+              ? 'Tap to stop • pauses up to 12 seconds • maximum 5 minutes'
+              : (_liveTranscript.isEmpty
+                    ? 'Tap to start speaking'
+                    : 'Tap again to continue your answer'),
           style: const TextStyle(
             color: Color(0xFF64748B),
             fontSize: 13,
@@ -1148,12 +1155,9 @@ class _SessionScreenState extends State<SessionScreen>
         _answerController.text = transcript;
       });
     } else {
-      setState(() {
-        _liveTranscript = '';
-        _answerController.clear();
-      });
-
-      final started = await _stt.startListening();
+      final started = await _stt.startListening(
+        existingTranscript: _answerController.text,
+      );
       if (!started && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

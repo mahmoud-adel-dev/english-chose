@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../config/theme.dart';
 import '../../providers/app_provider.dart';
 import 'ai_providers_tab.dart';
+import 'google_auth_tab.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -18,7 +19,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<AppProvider>().fetchAdminData();
     });
@@ -63,6 +64,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
             Tab(icon: Icon(Icons.smart_toy_outlined), text: 'AI Models'),
             Tab(icon: Icon(Icons.alt_route_rounded), text: 'Task Routings'),
             Tab(icon: Icon(Icons.people_outline_rounded), text: 'Users'),
+            Tab(icon: Icon(Icons.login_rounded), text: 'Authentication'),
           ],
         ),
         actions: [
@@ -83,6 +85,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                 _buildModelsTab(provider),
                 _buildRoutingsTab(provider),
                 _buildUsersTab(provider),
+                GoogleAuthTab(
+                  configuration: provider.adminGoogleAuthConfig,
+                  onSave: provider.saveGoogleAuthConfig,
+                ),
               ],
             ),
     );

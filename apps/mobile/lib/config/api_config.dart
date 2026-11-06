@@ -12,6 +12,8 @@ class ApiConfig {
   static const String login = '$baseUrl/auth/login';
   static const String register = '$baseUrl/auth/register';
   static const String me = '$baseUrl/auth/me';
+  static const String googleAuthConfig = '$baseUrl/auth/google/config';
+  static const String googleLogin = '$baseUrl/auth/google';
 
   // Learner profile & Quotas
   static const String profile = '$baseUrl/profile';
@@ -49,4 +51,5 @@ class ApiConfig {
   static const String adminModels = '$baseUrl/admin/models';
   static const String adminRoutings = '$baseUrl/admin/routings';
   static const String adminUsers = '$baseUrl/admin/users';
+  static const String adminGoogleAuth = '$baseUrl/admin/auth/google';
 }

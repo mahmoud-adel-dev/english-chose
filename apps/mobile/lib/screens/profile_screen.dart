@@ -32,9 +32,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('My Profile & Progress'),
-      ),
+      appBar: AppBar(title: const Text('My Profile & Progress')),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 720),
@@ -51,9 +49,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       children: [
                         CircleAvatar(
                           radius: 36,
-                          backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.12),
+                          backgroundColor: AppTheme.primaryColor.withValues(
+                            alpha: 0.12,
+                          ),
                           child: Text(
-                            user.name.isNotEmpty ? user.name[0].toUpperCase() : 'U',
+                            user.name.isNotEmpty
+                                ? user.name[0].toUpperCase()
+                                : 'U',
                             style: const TextStyle(
                               fontSize: 28,
                               fontWeight: FontWeight.bold,
@@ -84,7 +86,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ),
                               const SizedBox(height: 8),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 4,
+                                ),
                                 decoration: BoxDecoration(
                                   color: const Color(0xFFF1F5F9),
                                   borderRadius: BorderRadius.circular(6),
@@ -129,18 +134,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text('Current Level', style: TextStyle(color: Color(0xFF64748B), fontSize: 12)),
+                                const Text(
+                                  'Current Level',
+                                  style: TextStyle(
+                                    color: Color(0xFF64748B),
+                                    fontSize: 12,
+                                  ),
+                                ),
                                 const SizedBox(height: 6),
-                                LevelBadge(level: profile.currentLevel, fontSize: 16),
+                                LevelBadge(
+                                  level: profile.currentLevel,
+                                  fontSize: 16,
+                                ),
                               ],
                             ),
-                            const Icon(Icons.arrow_forward_rounded, color: Color(0xFF94A3B8)),
+                            const Icon(
+                              Icons.arrow_forward_rounded,
+                              color: Color(0xFF94A3B8),
+                            ),
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
-                                const Text('Target Level', style: TextStyle(color: Color(0xFF64748B), fontSize: 12)),
+                                const Text(
+                                  'Target Level',
+                                  style: TextStyle(
+                                    color: Color(0xFF64748B),
+                                    fontSize: 12,
+                                  ),
+                                ),
                                 const SizedBox(height: 6),
-                                LevelBadge(level: profile.targetLevel, fontSize: 16),
+                                LevelBadge(
+                                  level: profile.targetLevel,
+                                  fontSize: 16,
+                                ),
                               ],
                             ),
                           ],
@@ -167,55 +193,97 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                         ),
                         const SizedBox(height: 20),
-                        _buildSkillRow('Grammar Accuracy', profile.grammarScore, const Color(0xFF2563EB)),
+                        _buildSkillRow(
+                          'Grammar Accuracy',
+                          profile.grammarScore,
+                          const Color(0xFF2563EB),
+                        ),
                         const SizedBox(height: 16),
-                        _buildSkillRow('Vocabulary Range', profile.vocabularyScore, const Color(0xFF059669)),
+                        _buildSkillRow(
+                          'Vocabulary Range',
+                          profile.vocabularyScore,
+                          const Color(0xFF059669),
+                        ),
                         const SizedBox(height: 16),
-                        _buildSkillRow('Oral Fluency', profile.fluencyScore, const Color(0xFFD97706)),
+                        _buildSkillRow(
+                          'Oral Fluency',
+                          profile.fluencyScore,
+                          const Color(0xFFD97706),
+                        ),
                         const SizedBox(height: 16),
-                        _buildSkillRow('Pronunciation & Clarity', profile.pronunciationScore, const Color(0xFF8B5CF6)),
+                        _buildSkillRow(
+                          'Pronunciation & Clarity',
+                          profile.pronunciationScore,
+                          const Color(0xFF8B5CF6),
+                        ),
                         const SizedBox(height: 16),
-                        _buildSkillRow('Overall Proficiency', profile.overallScore, AppTheme.primaryColor),
+                        _buildSkillRow(
+                          'Overall Proficiency',
+                          profile.overallScore,
+                          AppTheme.primaryColor,
+                        ),
                       ],
                     ),
                   ),
                 ),
                 const SizedBox(height: 24),
 
-                // Diagnostics & Local Logs Button
-                Card(
-                  child: ListTile(
-                    leading: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
+                // Diagnostics are intentionally restricted to administrators.
+                if (provider.isAdmin)
+                  Card(
+                    child: ListTile(
+                      leading: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.receipt_long_rounded,
+                          color: AppTheme.primaryColor,
+                        ),
                       ),
-                      child: const Icon(Icons.receipt_long_rounded, color: AppTheme.primaryColor),
+                      title: const Text(
+                        'Local Logs & Diagnostics',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                      subtitle: const Text(
+                        'View all API requests, responses, and network errors live.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF64748B),
+                        ),
+                      ),
+                      trailing: const Icon(
+                        Icons.chevron_right_rounded,
+                        color: Color(0xFF94A3B8),
+                      ),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                LocalLogsScreen(isAdmin: provider.isAdmin),
+                          ),
+                        );
+                      },
                     ),
-                    title: const Text(
-                      'Local Logs & Diagnostics',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                    ),
-                    subtitle: const Text(
-                      'View all API requests, responses, and network errors live.',
-                      style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
-                    ),
-                    trailing: const Icon(Icons.chevron_right_rounded, color: Color(0xFF94A3B8)),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const LocalLogsScreen()),
-                      );
-                    },
                   ),
-                ),
-                const SizedBox(height: 16),
+                if (provider.isAdmin) const SizedBox(height: 16),
 
                 OutlinedButton.icon(
                   onPressed: () => provider.logout(),
-                  icon: const Icon(Icons.logout_rounded, color: AppTheme.errorColor),
-                  label: const Text('Sign Out', style: TextStyle(color: AppTheme.errorColor)),
+                  icon: const Icon(
+                    Icons.logout_rounded,
+                    color: AppTheme.errorColor,
+                  ),
+                  label: const Text(
+                    'Sign Out',
+                    style: TextStyle(color: AppTheme.errorColor),
+                  ),
                   style: OutlinedButton.styleFrom(
                     side: const BorderSide(color: Color(0xFFFECDD3)),
                     padding: const EdgeInsets.symmetric(vertical: 16),
@@ -268,4 +336,3 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 }
-

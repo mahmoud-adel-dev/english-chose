@@ -4,7 +4,9 @@ import '../config/theme.dart';
 import '../services/log_service.dart';
 
 class LocalLogsScreen extends StatefulWidget {
-  const LocalLogsScreen({super.key});
+  final bool isAdmin;
+
+  const LocalLogsScreen({super.key, required this.isAdmin});
 
   @override
   State<LocalLogsScreen> createState() => _LocalLogsScreenState();
@@ -23,6 +25,16 @@ class _LocalLogsScreenState extends State<LocalLogsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (!widget.isAdmin) {
+      return const Scaffold(
+        body: Center(
+          child: Text(
+            'Administrator access required',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+        ),
+      );
+    }
     return ListenableBuilder(
       listenable: LogService(),
       builder: (context, _) {
@@ -30,15 +42,19 @@ class _LocalLogsScreenState extends State<LocalLogsScreen> {
         final filteredLogs = allLogs.where((l) {
           if (_filter == 'ERRORS' && !l.isError) return false;
           if (_filter == 'API' &&
-              (l.type != LogType.apiRequest && l.type != LogType.apiResponse && l.type != LogType.apiError)) {
+              (l.type != LogType.apiRequest &&
+                  l.type != LogType.apiResponse &&
+                  l.type != LogType.apiError)) {
             return false;
           }
           if (_searchQuery.isNotEmpty) {
             final query = _searchQuery.toLowerCase();
             final matchesTitle = l.title.toLowerCase().contains(query);
             final matchesUrl = l.url?.toLowerCase().contains(query) ?? false;
-            final matchesErr = l.errorMessage?.toLowerCase().contains(query) ?? false;
-            final matchesBody = (l.requestBody?.toLowerCase().contains(query) ?? false) ||
+            final matchesErr =
+                l.errorMessage?.toLowerCase().contains(query) ?? false;
+            final matchesBody =
+                (l.requestBody?.toLowerCase().contains(query) ?? false) ||
                 (l.responseBody?.toLowerCase().contains(query) ?? false);
             return matchesTitle || matchesUrl || matchesErr || matchesBody;
           }
@@ -49,20 +65,30 @@ class _LocalLogsScreenState extends State<LocalLogsScreen> {
           appBar: AppBar(
             title: Row(
               children: [
-                const Icon(Icons.receipt_long_rounded, color: AppTheme.primaryColor),
+                const Icon(
+                  Icons.receipt_long_rounded,
+                  color: AppTheme.primaryColor,
+                ),
                 const SizedBox(width: 8),
                 const Text('Diagnostic Logs'),
                 const SizedBox(width: 8),
                 if (LogService().errorCount > 0)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: AppTheme.errorColor,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
                       '${LogService().errorCount} Errors',
-                      style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
               ],
@@ -75,7 +101,9 @@ class _LocalLogsScreenState extends State<LocalLogsScreen> {
                   await LogService().copyAll();
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('All logs copied to clipboard!')),
+                      const SnackBar(
+                        content: Text('All logs copied to clipboard!'),
+                      ),
                     );
                   }
                 },
@@ -109,14 +137,20 @@ class _LocalLogsScreenState extends State<LocalLogsScreen> {
                                 },
                               )
                             : null,
-                        contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 12),
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: 0,
+                          horizontal: 12,
+                        ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
-                          borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                          borderSide: const BorderSide(
+                            color: Color(0xFFE2E8F0),
+                          ),
                         ),
                         isDense: true,
                       ),
-                      onChanged: (val) => setState(() => _searchQuery = val.trim()),
+                      onChanged: (val) =>
+                          setState(() => _searchQuery = val.trim()),
                     ),
                     const SizedBox(height: 8),
                     Row(
@@ -126,7 +160,9 @@ class _LocalLogsScreenState extends State<LocalLogsScreen> {
                         _filterChip(
                           'ERRORS',
                           'Errors (${LogService().errorCount})',
-                          badgeColor: LogService().errorCount > 0 ? AppTheme.errorColor : null,
+                          badgeColor: LogService().errorCount > 0
+                              ? AppTheme.errorColor
+                              : null,
                         ),
                         const SizedBox(width: 8),
                         _filterChip('API', 'API Calls'),
@@ -144,8 +180,11 @@ class _LocalLogsScreenState extends State<LocalLogsScreen> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.check_circle_outline_rounded,
-                                size: 48, color: Colors.grey.shade400),
+                            Icon(
+                              Icons.check_circle_outline_rounded,
+                              size: 48,
+                              color: Colors.grey.shade400,
+                            ),
                             const SizedBox(height: 12),
                             Text(
                               _searchQuery.isNotEmpty
@@ -179,7 +218,8 @@ class _LocalLogsScreenState extends State<LocalLogsScreen> {
       onSelected: (selected) {
         if (selected) setState(() => _filter = filterKey);
       },
-      selectedColor: badgeColor ?? AppTheme.primaryColor.withValues(alpha: 0.15),
+      selectedColor:
+          badgeColor ?? AppTheme.primaryColor.withValues(alpha: 0.15),
       labelStyle: TextStyle(
         fontSize: 12,
         fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
@@ -201,8 +241,8 @@ class _LogItemCard extends StatelessWidget {
     final color = isErr
         ? AppTheme.errorColor
         : (log.statusCode != null && log.statusCode! < 300)
-            ? AppTheme.successColor
-            : AppTheme.primaryColor;
+        ? AppTheme.successColor
+        : AppTheme.primaryColor;
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -210,7 +250,9 @@ class _LogItemCard extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
         side: BorderSide(
-          color: isErr ? AppTheme.errorColor.withValues(alpha: 0.4) : const Color(0xFFE2E8F0),
+          color: isErr
+              ? AppTheme.errorColor.withValues(alpha: 0.4)
+              : const Color(0xFFE2E8F0),
         ),
       ),
       child: InkWell(
@@ -225,13 +267,18 @@ class _LogItemCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: color.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
-                      log.statusCode != null ? '${log.statusCode}' : log.method ?? 'EVENT',
+                      log.statusCode != null
+                          ? '${log.statusCode}'
+                          : log.method ?? 'EVENT',
                       style: TextStyle(
                         color: color,
                         fontWeight: FontWeight.bold,
@@ -246,7 +293,9 @@ class _LogItemCard extends StatelessWidget {
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 13,
-                        color: isErr ? AppTheme.errorColor : const Color(0xFF0F172A),
+                        color: isErr
+                            ? AppTheme.errorColor
+                            : const Color(0xFF0F172A),
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -254,7 +303,10 @@ class _LogItemCard extends StatelessWidget {
                   ),
                   Text(
                     log.formattedTime,
-                    style: const TextStyle(fontSize: 10, color: Color(0xFF94A3B8)),
+                    style: const TextStyle(
+                      fontSize: 10,
+                      color: Color(0xFF94A3B8),
+                    ),
                   ),
                 ],
               ),
@@ -262,11 +314,18 @@ class _LogItemCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    const Icon(Icons.timer_outlined, size: 12, color: Color(0xFF94A3B8)),
+                    const Icon(
+                      Icons.timer_outlined,
+                      size: 12,
+                      color: Color(0xFF94A3B8),
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       '${log.latencyMs}ms',
-                      style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFF64748B),
+                      ),
                     ),
                   ],
                 ),
@@ -281,7 +340,10 @@ class _LogItemCard extends StatelessWidget {
                   ),
                   child: Text(
                     log.errorMessage!,
-                    style: const TextStyle(color: Color(0xFFB91C1C), fontSize: 11),
+                    style: const TextStyle(
+                      color: Color(0xFFB91C1C),
+                      fontSize: 11,
+                    ),
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -319,7 +381,10 @@ class _LogItemCard extends StatelessWidget {
                     children: [
                       const Text(
                         'Log Details',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
                       ),
                       IconButton(
                         icon: const Icon(Icons.close),
@@ -330,24 +395,51 @@ class _LogItemCard extends StatelessWidget {
                   const Divider(),
                   _detailRow('Timestamp', log.timestamp.toIso8601String()),
                   if (log.method != null) _detailRow('Method', log.method!),
-                  if (log.statusCode != null) _detailRow('Status Code', '${log.statusCode}'),
-                  if (log.latencyMs != null) _detailRow('Latency', '${log.latencyMs} ms'),
+                  if (log.statusCode != null)
+                    _detailRow('Status Code', '${log.statusCode}'),
+                  if (log.latencyMs != null)
+                    _detailRow('Latency', '${log.latencyMs} ms'),
                   if (log.url != null) _detailRow('URL', log.url!),
+                  _detailRow('Failure stage', log.stage),
+                  _detailRow('What it means', log.statusExplanation),
+                  _detailRow('Likely cause', log.likelyCause),
                   if (log.errorMessage != null) ...[
                     const SizedBox(height: 12),
-                    const Text('Error Message:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.errorColor)),
+                    const Text(
+                      'Error Message:',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                        color: AppTheme.errorColor,
+                      ),
+                    ),
                     const SizedBox(height: 4),
-                    _codeBlock(log.errorMessage!, color: const Color(0xFFFEF2F2)),
+                    _codeBlock(
+                      log.errorMessage!,
+                      color: const Color(0xFFFEF2F2),
+                    ),
                   ],
                   if (log.requestBody != null) ...[
                     const SizedBox(height: 12),
-                    const Text('Request Payload:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    const Text(
+                      'Request Payload:',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
                     const SizedBox(height: 4),
                     _codeBlock(_prettyJson(log.requestBody!)),
                   ],
                   if (log.responseBody != null) ...[
                     const SizedBox(height: 12),
-                    const Text('Response Body:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    const Text(
+                      'Response Body:',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
                     const SizedBox(height: 4),
                     _codeBlock(_prettyJson(log.responseBody!)),
                   ],
@@ -370,7 +462,11 @@ class _LogItemCard extends StatelessWidget {
             width: 90,
             child: Text(
               label,
-              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: Color(0xFF64748B)),
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+                color: Color(0xFF64748B),
+              ),
             ),
           ),
           Expanded(
@@ -394,7 +490,11 @@ class _LogItemCard extends StatelessWidget {
       ),
       child: SelectableText(
         text,
-        style: const TextStyle(fontFamily: 'monospace', fontSize: 11, height: 1.4),
+        style: const TextStyle(
+          fontFamily: 'monospace',
+          fontSize: 11,
+          height: 1.4,
+        ),
       ),
     );
   }
@@ -408,4 +508,3 @@ class _LogItemCard extends StatelessWidget {
     }
   }
 }
-

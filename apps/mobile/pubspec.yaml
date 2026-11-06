@@ -43,6 +43,7 @@ dependencies:
   speech_to_text: ^7.0.0
   permission_handler: ^11.3.1
   just_audio: ^0.9.42
+  google_sign_in: ^7.2.0
 
 dev_dependencies:
   flutter_test:

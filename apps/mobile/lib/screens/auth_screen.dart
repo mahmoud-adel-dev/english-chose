@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../config/theme.dart';
 import '../providers/app_provider.dart';
+import '../widgets/google_sign_in_button.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -14,9 +15,19 @@ class _AuthScreenState extends State<AuthScreen> {
   bool isLogin = true;
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
-  final _emailController = TextEditingController(text: 'student@englishcoach.app');
+  final _emailController = TextEditingController(
+    text: 'student@englishcoach.app',
+  );
   final _passwordController = TextEditingController(text: 'Password123!');
   bool _obscurePassword = true;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<AppProvider>().fetchGoogleAuthConfig();
+    });
+  }
 
   @override
   void dispose() {
@@ -31,10 +42,7 @@ class _AuthScreenState extends State<AuthScreen> {
     final provider = context.read<AppProvider>();
 
     if (isLogin) {
-      await provider.login(
-        _emailController.text,
-        _passwordController.text,
-      );
+      await provider.login(_emailController.text, _passwordController.text);
     } else {
       await provider.register(
         _nameController.text,
@@ -113,14 +121,20 @@ class _AuthScreenState extends State<AuthScreen> {
                               child: GestureDetector(
                                 onTap: () => setState(() => isLogin = true),
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(vertical: 10),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 10,
+                                  ),
                                   decoration: BoxDecoration(
-                                    color: isLogin ? Colors.white : Colors.transparent,
+                                    color: isLogin
+                                        ? Colors.white
+                                        : Colors.transparent,
                                     borderRadius: BorderRadius.circular(8),
                                     boxShadow: isLogin
                                         ? [
                                             BoxShadow(
-                                              color: Colors.black.withValues(alpha: 0.05),
+                                              color: Colors.black.withValues(
+                                                alpha: 0.05,
+                                              ),
                                               blurRadius: 4,
                                               offset: const Offset(0, 2),
                                             ),
@@ -131,8 +145,12 @@ class _AuthScreenState extends State<AuthScreen> {
                                     'Sign In',
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
-                                      fontWeight: isLogin ? FontWeight.w700 : FontWeight.w500,
-                                      color: isLogin ? AppTheme.primaryColor : const Color(0xFF64748B),
+                                      fontWeight: isLogin
+                                          ? FontWeight.w700
+                                          : FontWeight.w500,
+                                      color: isLogin
+                                          ? AppTheme.primaryColor
+                                          : const Color(0xFF64748B),
                                     ),
                                   ),
                                 ),
@@ -142,14 +160,20 @@ class _AuthScreenState extends State<AuthScreen> {
                               child: GestureDetector(
                                 onTap: () => setState(() => isLogin = false),
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(vertical: 10),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 10,
+                                  ),
                                   decoration: BoxDecoration(
-                                    color: !isLogin ? Colors.white : Colors.transparent,
+                                    color: !isLogin
+                                        ? Colors.white
+                                        : Colors.transparent,
                                     borderRadius: BorderRadius.circular(8),
                                     boxShadow: !isLogin
                                         ? [
                                             BoxShadow(
-                                              color: Colors.black.withValues(alpha: 0.05),
+                                              color: Colors.black.withValues(
+                                                alpha: 0.05,
+                                              ),
                                               blurRadius: 4,
                                               offset: const Offset(0, 2),
                                             ),
@@ -160,8 +184,12 @@ class _AuthScreenState extends State<AuthScreen> {
                                     'Register',
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
-                                      fontWeight: !isLogin ? FontWeight.w700 : FontWeight.w500,
-                                      color: !isLogin ? AppTheme.primaryColor : const Color(0xFF64748B),
+                                      fontWeight: !isLogin
+                                          ? FontWeight.w700
+                                          : FontWeight.w500,
+                                      color: !isLogin
+                                          ? AppTheme.primaryColor
+                                          : const Color(0xFF64748B),
                                     ),
                                   ),
                                 ),
@@ -179,11 +207,17 @@ class _AuthScreenState extends State<AuthScreen> {
                           decoration: BoxDecoration(
                             color: AppTheme.errorColor.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: AppTheme.errorColor.withValues(alpha: 0.3)),
+                            border: Border.all(
+                              color: AppTheme.errorColor.withValues(alpha: 0.3),
+                            ),
                           ),
                           child: Row(
                             children: [
-                              const Icon(Icons.error_outline, color: AppTheme.errorColor, size: 20),
+                              const Icon(
+                                Icons.error_outline,
+                                color: AppTheme.errorColor,
+                                size: 20,
+                              ),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
@@ -238,11 +272,14 @@ class _AuthScreenState extends State<AuthScreen> {
                           prefixIcon: const Icon(Icons.lock_outline),
                           suffixIcon: IconButton(
                             icon: Icon(
-                              _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                              _obscurePassword
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
                               color: const Color(0xFF94A3B8),
                             ),
-                            onPressed: () =>
-                                setState(() => _obscurePassword = !_obscurePassword),
+                            onPressed: () => setState(
+                              () => _obscurePassword = !_obscurePassword,
+                            ),
                           ),
                         ),
                         validator: (v) => (v == null || v.length < 6)
@@ -266,17 +303,46 @@ class _AuthScreenState extends State<AuthScreen> {
                             : Text(isLogin ? 'Sign In' : 'Create Account'),
                       ),
 
+                      if (provider.isGoogleLoginEnabled) ...[
+                        const SizedBox(height: 14),
+                        Row(
+                          children: [
+                            const Expanded(child: Divider()),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                              ),
+                              child: Text(
+                                'or',
+                                style: TextStyle(color: Colors.grey.shade600),
+                              ),
+                            ),
+                            const Expanded(child: Divider()),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        GoogleSignInButton(
+                          enabled: true,
+                          loading: provider.isLoading,
+                          onPressed: provider.loginWithGoogle,
+                        ),
+                      ],
+
                       if (isLogin) ...[
                         const SizedBox(height: 16),
                         OutlinedButton.icon(
                           onPressed: provider.isLoading
                               ? null
                               : () {
-                                  _emailController.text = 'student@englishcoach.app';
+                                  _emailController.text =
+                                      'student@englishcoach.app';
                                   _passwordController.text = 'Password123!';
                                   _submit();
                                 },
-                          icon: const Icon(Icons.flash_on_rounded, color: AppTheme.warningColor),
+                          icon: const Icon(
+                            Icons.flash_on_rounded,
+                            color: AppTheme.warningColor,
+                          ),
                           label: const Text('Quick Login (Demo Student)'),
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 14),
@@ -290,15 +356,21 @@ class _AuthScreenState extends State<AuthScreen> {
                           onPressed: provider.isLoading
                               ? null
                               : () {
-                                  _emailController.text = 'admin@englishcoach.app';
+                                  _emailController.text =
+                                      'admin@englishcoach.app';
                                   _passwordController.text = 'Password123!';
                                   _submit();
                                 },
-                          icon: const Icon(Icons.shield_rounded, color: AppTheme.primaryColor),
+                          icon: const Icon(
+                            Icons.shield_rounded,
+                            color: AppTheme.primaryColor,
+                          ),
                           label: const Text('Quick Login (Admin Dashboard)'),
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 14),
-                            side: const BorderSide(color: AppTheme.primaryColor),
+                            side: const BorderSide(
+                              color: AppTheme.primaryColor,
+                            ),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -316,4 +388,3 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 }
-

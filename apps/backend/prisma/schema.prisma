@@ -64,6 +64,8 @@ model User {
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+  googleSubject String?  @unique
+  authProvider  String   @default("PASSWORD")
 
   profile     LearningProfile?
   assessments CefrAssessment[]
@@ -74,6 +76,21 @@ model User {
 
   @@index([email])
   @@index([role])
+}
+
+model GoogleAuthConfig {
+  id                     String   @id @default("google")
+  enabled                Boolean  @default(false)
+  webClientId            String?
+  androidClientId        String?
+  iosClientId            String?
+  clientSecretCredential Json?
+  clientSecretLastFour   String?
+  apiKeyCredential       Json?
+  apiKeyLastFour         String?
+  updatedById            String?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
 }
 
 model SavedWord {
