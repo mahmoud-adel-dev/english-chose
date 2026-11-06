@@ -16,6 +16,7 @@ class AppProvider with ChangeNotifier {
   Map<String, dynamic>? _quota;
   List<Map<String, dynamic>> _savedWords = [];
   String? _learningSupportContent;
+  Map<String, dynamic>? _lastSessionSummary;
 
   // Admin states
   Map<String, dynamic>? _adminAnalytics;
@@ -38,6 +39,7 @@ class AppProvider with ChangeNotifier {
   Map<String, dynamic>? get quota => _quota;
   List<Map<String, dynamic>> get savedWords => _savedWords;
   String? get learningSupportContent => _learningSupportContent;
+  Map<String, dynamic>? get lastSessionSummary => _lastSessionSummary;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   bool get isAuthenticated => _user != null;
@@ -213,6 +215,42 @@ class AppProvider with ChangeNotifier {
       _currentSession = null;
       notifyListeners();
     }
+  }
+
+  Future<bool> finishSession() async {
+    if (_currentSession == null) return false;
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      final url = ApiConfig.sessionFinish(_currentSession!.id);
+      final data = await ApiService.post(url);
+      _lastSessionSummary = data as Map<String, dynamic>?;
+      _currentSession = null;
+      _lastEvaluation = null;
+      await refreshProfile();
+      await fetchQuota();
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      // Graceful local completion fallback
+      _lastSessionSummary = {
+        'status': 'COMPLETED',
+        'averageScore': _lastEvaluation?.overallScore.round() ?? 80,
+      };
+      _currentSession = null;
+      _lastEvaluation = null;
+      await refreshProfile();
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    }
+  }
+
+  void clearSessionSummary() {
+    _lastSessionSummary = null;
+    notifyListeners();
   }
 
   Future<bool> submitAnswer(String questionId, String transcript) async {

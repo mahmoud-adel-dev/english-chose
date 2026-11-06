@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../config/theme.dart';
 import '../providers/app_provider.dart';
 import '../widgets/level_badge.dart';
+import 'logs_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -180,6 +181,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
+
+                // Diagnostics & Local Logs Button
+                Card(
+                  child: ListTile(
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.receipt_long_rounded, color: AppTheme.primaryColor),
+                    ),
+                    title: const Text(
+                      'Local Logs & Diagnostics',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    ),
+                    subtitle: const Text(
+                      'View all API requests, responses, and network errors live.',
+                      style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                    ),
+                    trailing: const Icon(Icons.chevron_right_rounded, color: Color(0xFF94A3B8)),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const LocalLogsScreen()),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 16),
 
                 OutlinedButton.icon(
                   onPressed: () => provider.logout(),

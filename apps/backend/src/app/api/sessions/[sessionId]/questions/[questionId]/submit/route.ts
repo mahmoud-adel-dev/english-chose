@@ -199,55 +199,53 @@ Learner Response: "${transcript}"`,
     });
 
     // 5. Update user profile scores and streak
-    await prisma.$transaction(async (tx) => {
-      const currentProfile = await tx.learningProfile.findUnique({ where: { userId } });
-      if (currentProfile) {
-        const newOverall = currentProfile.overallScore > 0 
-          ? (currentProfile.overallScore * 0.7) + (evaluationData.scores.overall * 0.3)
-          : evaluationData.scores.overall;
-        const newGrammar = currentProfile.grammarScore > 0
-          ? (currentProfile.grammarScore * 0.7) + (evaluationData.scores.grammar * 0.3)
-          : evaluationData.scores.grammar;
-        const newVocab = currentProfile.vocabularyScore > 0
-          ? (currentProfile.vocabularyScore * 0.7) + (evaluationData.scores.vocabulary * 0.3)
-          : evaluationData.scores.vocabulary;
-        const evalFluency = evaluationData.scores.fluency ?? evaluationData.scores.overall;
-        const evalPronunciation = evaluationData.scores.pronunciation ?? evaluationData.scores.overall;
-        const newFluency = currentProfile.fluencyScore > 0
-          ? (currentProfile.fluencyScore * 0.7) + (evalFluency * 0.3)
-          : evalFluency;
-        const newPronunciation = currentProfile.pronunciationScore > 0
-          ? (currentProfile.pronunciationScore * 0.7) + (evalPronunciation * 0.3)
-          : evalPronunciation;
+    const currentProfile = await prisma.learningProfile.findUnique({ where: { userId } });
+    if (currentProfile) {
+      const newOverall = currentProfile.overallScore > 0 
+        ? (currentProfile.overallScore * 0.7) + (evaluationData.scores.overall * 0.3)
+        : evaluationData.scores.overall;
+      const newGrammar = currentProfile.grammarScore > 0
+        ? (currentProfile.grammarScore * 0.7) + (evaluationData.scores.grammar * 0.3)
+        : evaluationData.scores.grammar;
+      const newVocab = currentProfile.vocabularyScore > 0
+        ? (currentProfile.vocabularyScore * 0.7) + (evaluationData.scores.vocabulary * 0.3)
+        : evaluationData.scores.vocabulary;
+      const evalFluency = evaluationData.scores.fluency ?? evaluationData.scores.overall;
+      const evalPronunciation = evaluationData.scores.pronunciation ?? evaluationData.scores.overall;
+      const newFluency = currentProfile.fluencyScore > 0
+        ? (currentProfile.fluencyScore * 0.7) + (evalFluency * 0.3)
+        : evalFluency;
+      const newPronunciation = currentProfile.pronunciationScore > 0
+        ? (currentProfile.pronunciationScore * 0.7) + (evalPronunciation * 0.3)
+        : evalPronunciation;
 
-        await tx.learningProfile.update({
-          where: { userId },
-          data: {
-            overallScore: Math.round(newOverall * 10) / 10,
-            grammarScore: Math.round(newGrammar * 10) / 10,
-            vocabularyScore: Math.round(newVocab * 10) / 10,
-            fluencyScore: Math.round(newFluency * 10) / 10,
-            pronunciationScore: Math.round(newPronunciation * 10) / 10,
-            dailyStreak: currentProfile.dailyStreak > 0 ? currentProfile.dailyStreak : 1,
-            lastTrainedDate: new Date(),
-          },
-        });
-      }
-
-      // Check if all questions in this session have at least one submission
-      const allQuestions = await tx.sessionQuestion.findMany({
-        where: { sessionId },
-        include: { submissions: true },
+      await prisma.learningProfile.update({
+        where: { userId },
+        data: {
+          overallScore: Math.round(newOverall * 10) / 10,
+          grammarScore: Math.round(newGrammar * 10) / 10,
+          vocabularyScore: Math.round(newVocab * 10) / 10,
+          fluencyScore: Math.round(newFluency * 10) / 10,
+          pronunciationScore: Math.round(newPronunciation * 10) / 10,
+          dailyStreak: currentProfile.dailyStreak > 0 ? currentProfile.dailyStreak : 1,
+          lastTrainedDate: new Date(),
+        },
       });
+    }
 
-      const allDone = allQuestions.every((q) => q.submissions.length > 0);
-      if (allDone) {
-        await tx.dailySession.update({
-          where: { id: sessionId },
-          data: { status: "COMPLETED" },
-        });
-      }
+    // Check if all questions in this session have at least one submission
+    const allQuestions = await prisma.sessionQuestion.findMany({
+      where: { sessionId },
+      include: { submissions: true },
     });
+
+    const allDone = allQuestions.every((q) => q.submissions.length > 0);
+    if (allDone) {
+      await prisma.dailySession.update({
+        where: { id: sessionId },
+        data: { status: "COMPLETED" },
+      });
+    }
 
     const result: QuestionEvaluationResult = {
       submissionId: submission.id,

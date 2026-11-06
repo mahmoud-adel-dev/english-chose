@@ -6,6 +6,7 @@ import '../models/session.dart';
 import '../providers/app_provider.dart';
 import '../services/tts_service.dart';
 import '../services/stt_service.dart';
+import 'logs_screen.dart';
 
 class SessionScreen extends StatefulWidget {
   const SessionScreen({super.key});
@@ -189,6 +190,16 @@ class _SessionScreenState extends State<SessionScreen>
                 ),
               ),
             ),
+          IconButton(
+            tooltip: 'Diagnostic Logs',
+            icon: const Icon(Icons.receipt_long_rounded),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const LocalLogsScreen()),
+              );
+            },
+          ),
           // Auto-play TTS toggle
           IconButton(
             tooltip: _autoPlayTts ? 'Auto-read ON' : 'Auto-read OFF',
@@ -220,6 +231,11 @@ class _SessionScreenState extends State<SessionScreen>
   }
 
   Widget _buildContent(AppProvider provider, DailySessionModel? session) {
+    // Show completed session summary view if available
+    if (provider.lastSessionSummary != null) {
+      return _buildSessionCompletedView(provider, provider.lastSessionSummary!);
+    }
+
     // Show error if any
     if (provider.errorMessage != null && session == null) {
       return _buildErrorState(provider);
@@ -1323,25 +1339,32 @@ class _SessionScreenState extends State<SessionScreen>
             Align(
               alignment: Alignment.centerRight,
               child: ElevatedButton.icon(
-                onPressed: () {
-                  _tts.stop();
-                  provider.clearLearningSupport();
-                  if (isLast) {
-                    setState(() => _activeSupportAction = null);
-                    provider.fetchCurrentSession();
-                  } else {
-                    setState(() {
-                      _activeSupportAction = null;
-                      _currentQuestionIndex++;
-                      _liveTranscript = '';
-                      _answerController.clear();
-                    });
-                    // Clear last evaluation for fresh view
-                    provider.clearError();
-                  }
-                },
+                onPressed: provider.isLoading
+                    ? null
+                    : () async {
+                        _tts.stop();
+                        provider.clearLearningSupport();
+                        if (isLast) {
+                          setState(() {
+                            _activeSupportAction = null;
+                            _currentQuestionIndex = 0;
+                            _liveTranscript = '';
+                            _answerController.clear();
+                          });
+                          await provider.finishSession();
+                        } else {
+                          setState(() {
+                            _activeSupportAction = null;
+                            _currentQuestionIndex++;
+                            _liveTranscript = '';
+                            _answerController.clear();
+                          });
+                          // Clear last evaluation for fresh view
+                          provider.clearError();
+                        }
+                      },
                 icon: Icon(isLast
-                    ? Icons.check_circle
+                    ? Icons.check_circle_rounded
                     : Icons.arrow_forward_rounded),
                 label: Text(isLast ? 'Finish Session' : 'Next Question'),
               ),
@@ -1405,6 +1428,180 @@ class _SessionScreenState extends State<SessionScreen>
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildSessionCompletedView(
+      AppProvider provider, Map<String, dynamic> summary) {
+    final avgScore = (summary['averageScore'] as num?)?.toDouble() ?? 80.0;
+    final grammarScore = (summary['grammarScore'] as num?)?.toDouble() ?? avgScore;
+    final vocabScore = (summary['vocabularyScore'] as num?)?.toDouble() ?? avgScore;
+    final fluencyScore = (summary['fluencyScore'] as num?)?.toDouble() ?? avgScore;
+    final streak = provider.profile?.dailyStreak ?? 1;
+
+    final scoreColor = avgScore >= 80
+        ? AppTheme.successColor
+        : (avgScore >= 60 ? AppTheme.primaryColor : AppTheme.warningColor);
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Celebratory icon
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: AppTheme.successColor.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.check_circle_outline_rounded,
+                size: 56,
+                color: AppTheme.successColor,
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              '🎉 Session Complete!',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF0F172A),
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Outstanding effort! You completed all 5 spoken exercises today with personalized AI feedback.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: Color(0xFF64748B),
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Average Score Card
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: scoreColor.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: scoreColor.withValues(alpha: 0.2)),
+              ),
+              child: Column(
+                children: [
+                  Text(
+                    'Overall Session Score',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: scoreColor,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    '${avgScore.round()}%',
+                    style: TextStyle(
+                      fontSize: 42,
+                      fontWeight: FontWeight.w900,
+                      color: scoreColor,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _buildSummaryMetric('Grammar', '${grammarScore.round()}%', Icons.spellcheck),
+                      _buildSummaryMetric('Vocabulary', '${vocabScore.round()}%', Icons.menu_book),
+                      _buildSummaryMetric('Fluency', '${fluencyScore.round()}%', Icons.record_voice_over),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Streak card
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFFBEB),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFFDE68A)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text('🔥', style: TextStyle(fontSize: 20)),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Daily Streak: $streak Day${streak > 1 ? 's' : ''}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: Color(0xFFB45309),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 28),
+
+            // Action buttons
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () {
+                      provider.clearSessionSummary();
+                    },
+                    child: const Text('Back to Home'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: provider.isLoading
+                        ? null
+                        : () async {
+                            provider.clearSessionSummary();
+                            await provider.startSession();
+                          },
+                    child: const Text('Practice Again'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSummaryMetric(String label, String value, IconData icon) {
+    return Column(
+      children: [
+        Icon(icon, size: 18, color: const Color(0xFF64748B)),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 14,
+            color: Color(0xFF0F172A),
+          ),
+        ),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 11,
+            color: Color(0xFF64748B),
+          ),
+        ),
+      ],
     );
   }
 

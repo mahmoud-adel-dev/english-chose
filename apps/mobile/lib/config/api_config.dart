@@ -22,6 +22,8 @@ class ApiConfig {
   static const String sessionCurrent = '$baseUrl/sessions/current';
   static String sessionSubmit(String sessionId, String questionId) =>
       '$baseUrl/sessions/$sessionId/questions/$questionId/submit';
+  static String sessionFinish(String sessionId) =>
+      '$baseUrl/sessions/$sessionId/finish';
 
   // CEFR Placement Assessment
   static const String assessmentStart = '$baseUrl/assessment/start';
