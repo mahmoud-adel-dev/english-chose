@@ -147,43 +147,54 @@ class _QuizScreenState extends State<QuizScreen> {
           ),
         ),
       ),
-      bottomNavigationBar: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
-        ),
-        child: Row(
-          children: [
-            if (_currentIndex > 0)
-              OutlinedButton(
-                onPressed: _previousQuestion,
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
+          ),
+          child: Row(
+            children: [
+              if (_currentIndex > 0) ...[
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: _previousQuestion,
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 13),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    child: const Text('Previous'),
+                  ),
                 ),
-                child: const Text('Previous'),
+                const SizedBox(width: 12),
+              ],
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: selectedOption != null ? _nextQuestion : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryColor,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: Text(
+                    _currentIndex == totalQuestions - 1 ? 'Finish Exam' : 'Next Question',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
               ),
-            const Spacer(),
-            ElevatedButton(
-              onPressed: selectedOption != null ? _nextQuestion : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-              child: Text(
-                _currentIndex == totalQuestions - 1 ? 'Finish Exam' : 'Next Question',
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
-        child: Column(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 900),
+            child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Question Card
@@ -336,11 +347,12 @@ class _QuizScreenState extends State<QuizScreen> {
               );
             }),
 
-            // Explanation Box
             if (_showExplanation) ...[
               const SizedBox(height: 12),
+              _buildArabicGrammarCoach(question),
+              const SizedBox(height: 10),
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
                   color: const Color(0xFFF0FDF4),
                   borderRadius: BorderRadius.circular(12),
@@ -354,7 +366,7 @@ class _QuizScreenState extends State<QuizScreen> {
                         Icon(Icons.lightbulb_outline, color: Color(0xFF15803D), size: 18),
                         SizedBox(width: 6),
                         Text(
-                          'Explanation / التوضيح التعليمي',
+                          'English Explanation / التوضيح الإنجليزي',
                           style: TextStyle(
                             color: Color(0xFF15803D),
                             fontWeight: FontWeight.bold,
@@ -367,14 +379,121 @@ class _QuizScreenState extends State<QuizScreen> {
                     Text(
                       question.explanation,
                       style: const TextStyle(
-                        fontSize: 14,
+                        fontSize: 13,
                         color: Color(0xFF166534),
-                        height: 1.4,
+                        height: 1.45,
                       ),
                     ),
                   ],
                 ),
               ),
+            ],
+          ],
+        ),
+            ),
+          ),
+      ),
+    );
+  }
+
+  Widget _buildArabicGrammarCoach(QuizQuestionModel question) {
+    final examples = question.grammarExamples;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFF5F3FF), Color(0xFFEFF6FF)],
+          begin: Alignment.topRight,
+          end: Alignment.bottomLeft,
+        ),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFDDD6FE)),
+      ),
+      child: Directionality(
+        textDirection: TextDirection.rtl,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(9),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(11),
+                  ),
+                  child: const Icon(Icons.auto_stories_rounded, color: AppTheme.primaryColor),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    question.grammarTitleArabic,
+                    style: const TextStyle(
+                      color: Color(0xFF312E81),
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                const Text('شرح فوري', style: TextStyle(color: Color(0xFF6366F1), fontSize: 11, fontWeight: FontWeight.w700)),
+              ],
+            ),
+            const SizedBox(height: 13),
+            Text(
+              question.explanationArabic.isNotEmpty
+                  ? question.explanationArabic
+                  : 'راجع الفاعل والزمن وتركيب الجملة. بعد الأفعال المساعدة مثل do وdoes وdid نستخدم الفعل في المصدر، أما التصريف الثالث فيأتي في الأزمنة التامة والمبني للمجهول.',
+              textAlign: TextAlign.right,
+              style: const TextStyle(fontSize: 14, height: 1.75, color: Color(0xFF334155)),
+            ),
+            if (question.verbFormsArabic.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.85),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('تصريفات مهمة', style: TextStyle(fontSize: 12, color: Color(0xFF6366F1), fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 6),
+                    Directionality(
+                      textDirection: TextDirection.ltr,
+                      child: SelectableText(
+                        question.verbFormsArabic,
+                        textAlign: TextAlign.left,
+                        style: const TextStyle(fontSize: 13, height: 1.55, color: Color(0xFF1E293B), fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            if (examples.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              const Text('أمثلة تطبيقية', style: TextStyle(fontSize: 12, color: Color(0xFF6366F1), fontWeight: FontWeight.w800)),
+              const SizedBox(height: 8),
+              ...examples.map((example) => Container(
+                width: double.infinity,
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(11),
+                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.82), borderRadius: BorderRadius.circular(11)),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Directionality(
+                      textDirection: TextDirection.ltr,
+                      child: Text(example.english, textAlign: TextAlign.left, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF1E293B))),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(example.arabic, textAlign: TextAlign.right, style: const TextStyle(fontSize: 12, height: 1.55, color: Color(0xFF64748B))),
+                  ],
+                ),
+              )),
             ],
           ],
         ),
@@ -412,8 +531,11 @@ class _QuizScreenState extends State<QuizScreen> {
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 900),
+            child: Column(
+              children: [
             // Score Banner
             Container(
               width: double.infinity,
@@ -544,9 +666,11 @@ class _QuizScreenState extends State<QuizScreen> {
                           size: 20,
                         ),
                         const SizedBox(width: 8),
-                        Text(
-                          'Q${qIdx + 1}: ${q.prompt}',
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                        Expanded(
+                          child: Text(
+                            'Q${qIdx + 1}: ${q.prompt}',
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                          ),
                         ),
                       ],
                     ),
@@ -565,11 +689,34 @@ class _QuizScreenState extends State<QuizScreen> {
                       q.explanation,
                       style: const TextStyle(color: Color(0xFF64748B), fontSize: 12),
                     ),
+                    if (q.explanationArabic.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Directionality(
+                        textDirection: TextDirection.rtl,
+                        child: Text(
+                          q.explanationArabic,
+                          textAlign: TextAlign.right,
+                          style: const TextStyle(color: Color(0xFF334155), fontSize: 12, height: 1.6),
+                        ),
+                      ),
+                    ],
+                    if (q.verbFormsArabic.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Directionality(
+                        textDirection: TextDirection.ltr,
+                        child: Text(
+                          q.verbFormsArabic,
+                          style: const TextStyle(color: AppTheme.primaryColor, fontSize: 11, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               );
             }),
-          ],
+              ],
+            ),
+          ),
         ),
       ),
     );

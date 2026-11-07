@@ -1,6 +1,18 @@
 import { CefrLevel } from "@english-coach/contracts";
 import { GRAMMAR_CATALOG } from "./grammar-catalog";
 
+export interface QuizGrammarExample {
+  english: string;
+  arabic: string;
+}
+
+export interface ArabicGrammarCoach {
+  titleArabic: string;
+  explanationArabic: string;
+  verbFormsArabic: string;
+  examples: QuizGrammarExample[];
+}
+
 export interface McqQuizQuestion {
   id: string;
   questionNumber: number;
@@ -8,6 +20,10 @@ export interface McqQuizQuestion {
   options: [string, string, string, string];
   correctIndex: number;
   explanation: string;
+  grammarTitleArabic: string;
+  explanationArabic: string;
+  verbFormsArabic: string;
+  grammarExamples: QuizGrammarExample[];
   topicId: string;
   level: CefrLevel;
 }
@@ -56,6 +72,239 @@ function shuffleOptions(
 
 function sample<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
+}
+
+const IRREGULAR_VERB_FORMS: Record<string, string> = {
+  be: "be → am / is / are → was / were → been → being",
+  do: "do → does → did → done → doing",
+  have: "have → has → had → had → having",
+  go: "go → goes → went → gone → going",
+  eat: "eat → eats → ate → eaten → eating",
+  drink: "drink → drinks → drank → drunk → drinking",
+  drive: "drive → drives → drove → driven → driving",
+  speak: "speak → speaks → spoke → spoken → speaking",
+  write: "write → writes → wrote → written → writing",
+  see: "see → sees → saw → seen → seeing",
+  take: "take → takes → took → taken → taking",
+  find: "find → finds → found → found → finding",
+  leave: "leave → leaves → left → left → leaving",
+  buy: "buy → buys → bought → bought → buying",
+  understand: "understand → understands → understood → understood → understanding",
+  get: "get → gets → got → got / gotten → getting",
+  make: "make → makes → made → made → making",
+  come: "come → comes → came → come → coming",
+  know: "know → knows → knew → known → knowing",
+  study: "study → studies → studied → studied → studying",
+  teach: "teach → teaches → taught → taught → teaching",
+  read: "read → reads → read → read → reading",
+  work: "work → works → worked → worked → working",
+  play: "play → plays → played → played → playing",
+  watch: "watch → watches → watched → watched → watching",
+  finish: "finish → finishes → finished → finished → finishing",
+  like: "like → likes → liked → liked → liking",
+  live: "live → lives → lived → lived → living",
+  start: "start → starts → started → started → starting",
+  call: "call → calls → called → called → calling",
+  pass: "pass → passes → passed → passed → passing",
+  accept: "accept → accepts → accepted → accepted → accepting",
+  practice: "practice → practices → practiced → practiced → practicing",
+  resign: "resign → resigns → resigned → resigned → resigning",
+  adhere: "adhere → adheres → adhered → adhered → adhering",
+};
+
+const PAST_TO_BASE: Record<string, string> = {
+  went: "go", wrote: "write", saw: "see", took: "take", spoke: "speak",
+  found: "find", left: "leave", bought: "buy", understood: "understand",
+  ate: "eat", drank: "drink", drove: "drive", knew: "know", came: "come",
+  made: "make", had: "have", did: "do", was: "be", were: "be",
+  taught: "teach", got: "get", read: "read",
+};
+
+function inferBaseVerb(answer: string): string {
+  const value = answer.toLowerCase().trim();
+  if (PAST_TO_BASE[value]) return PAST_TO_BASE[value];
+  if (IRREGULAR_VERB_FORMS[value]) return value;
+  if (value.endsWith("ies") && value.length > 3) return `${value.slice(0, -3)}y`;
+  if (/(ches|shes|sses|xes|zes|oes)$/.test(value)) return value.slice(0, -2);
+  if (value.endsWith("s") && value.length > 2) return value.slice(0, -1);
+  if (value.endsWith("ied") && value.length > 3) return `${value.slice(0, -3)}y`;
+  if (value.endsWith("ed") && value.length > 3) return value.slice(0, -2);
+  if (value.endsWith("ing") && value.length > 4) return value.slice(0, -3);
+  return value;
+}
+
+function getVerbForms(answer: string): string {
+  const value = answer.toLowerCase().trim();
+  const base = inferBaseVerb(value);
+  if (IRREGULAR_VERB_FORMS[base]) return IRREGULAR_VERB_FORMS[base];
+
+  const third = base.endsWith("y") && !/[aeiou]y$/.test(base)
+    ? `${base.slice(0, -1)}ies`
+    : /(ch|sh|ss|x|z|o)$/.test(base) ? `${base}es` : `${base}s`;
+  const past = base.endsWith("e") ? `${base}d` : `${base}ed`;
+  const ing = base.endsWith("e") && !base.endsWith("ee")
+    ? `${base.slice(0, -1)}ing`
+    : `${base}ing`;
+  return `${base} → ${third} → ${past} → ${past} → ${ing}`;
+}
+
+/** Build a concise Arabic grammar lesson for every generated quiz item. */
+export function buildArabicGrammarCoach(
+  topicId: string,
+  prompt: string,
+  correctAnswer: string,
+): ArabicGrammarCoach {
+  const answer = correctAnswer.toLowerCase().trim();
+  const baseVerb = inferBaseVerb(answer);
+
+  switch (topicId) {
+    case "a1-present-simple": {
+      const isAuxiliary = ["do", "does", "don't", "doesn't"].includes(answer);
+      const singular = ["does", "doesn't"].includes(answer);
+      return {
+        titleArabic: "المضارع البسيط وتصريف الفعل",
+        explanationArabic: isAuxiliary
+          ? singular
+            ? "نستخدم Does مع الفاعل المفرد الغائب (He / She / It) في السؤال، ونستخدم doesn't في النفي. انتبه: بعد Does أو doesn't يعود الفعل الأساسي إلى المصدر بدون s أو es."
+            : "نستخدم Do مع (I / You / We / They) في السؤال، ونستخدم don't في النفي. بعد Do أو don't يأتي الفعل في المصدر دون أي إضافة."
+          : /\b(He|She|It|The|My|Your)\b/i.test(prompt)
+            ? "الجملة تتحدث عن عادة أو حقيقة. مع المفرد الغائب (He / She / It) نضيف s أو es للفعل في الإثبات. نضيف es غالبًا إذا انتهى الفعل بـ ch أو sh أو ss أو x أو o، ونحوّل consonant + y إلى ies."
+            : "المضارع البسيط يُستخدم للعادات والحقائق. مع I / You / We / They نستخدم المصدر، ومع He / She / It نضيف s أو es في الإثبات. في السؤال والنفي نستخدم Do أو Does ثم المصدر.",
+        verbFormsArabic: isAuxiliary
+          ? "do → does → did → done → doing | الفعل الأساسي بعد do / does يبقى في المصدر"
+          : getVerbForms(baseVerb),
+        examples: [
+          { english: "She works every day.", arabic: "هي تعمل كل يوم. (works مع She)" },
+          { english: "Does she work every day? / She doesn't work on Friday.", arabic: "هل تعمل كل يوم؟ / هي لا تعمل يوم الجمعة. لاحظ استخدام work دون s بعد Does وdoesn't." },
+        ],
+      };
+    }
+    case "a1-verb-to-be":
+      return {
+        titleArabic: "فعل الكينونة To Be وتصريفاته",
+        explanationArabic: "فعل To Be يربط الفاعل بوصف أو مهنة أو حالة أو مكان. في المضارع نختار am مع I، وis مع He / She / It والمفرد، وare مع You / We / They والجمع. لا نستخدم do أو does معه في السؤال أو النفي.",
+        verbFormsArabic: "المصدر: be | المضارع: am / is / are | الماضي: was / were | التصريف الثالث: been | ing: being",
+        examples: [
+          { english: "I am ready. / She is ready. / They are ready.", arabic: "أنا مستعد / هي مستعدة / هم مستعدون." },
+          { english: "Was he tired? They were happy.", arabic: "هل كان متعبًا؟ كانوا سعداء." },
+        ],
+      };
+    case "a1-articles-a-an-the":
+      return {
+        titleArabic: "أدوات a و an و the",
+        explanationArabic: "نستخدم a أو an مع الاسم المفرد المعدود غير المحدد. الاختيار بينهما يعتمد على الصوت الأول لا الحرف المكتوب: a قبل الصوت الساكن وan قبل الصوت المتحرك. نستخدم the عندما يكون الشيء محددًا أو معروفًا للطرفين.",
+        verbFormsArabic: "هذه القاعدة تخص أدوات الأسماء وليست تصريفًا للأفعال.",
+        examples: [
+          { english: "a university / an hour", arabic: "جامعة (صوت y ساكن) / ساعة (حرف h لا يُنطق)." },
+          { english: "I saw a dog. The dog was friendly.", arabic: "رأيت كلبًا. الكلب كان ودودًا؛ استخدمنا the عند ذكره مرة ثانية." },
+        ],
+      };
+    case "a2-past-simple": {
+      const base = PAST_TO_BASE[answer] || baseVerb;
+      return {
+        titleArabic: "الماضي البسيط وتصريفات الأفعال",
+        explanationArabic: prompt.toLowerCase().includes("didn't")
+          ? "وجود didn't يعني أن الجملة منفية في الماضي البسيط. بعد did not / didn't نستخدم الفعل في المصدر (V1)، لأن did تحمل علامة الماضي بالفعل. لا نستخدم التصريف الثاني بعدها."
+          : "نستخدم الماضي البسيط للتعبير عن حدث انتهى في وقت محدد بالماضي، مثل yesterday أو last week أو ago. الأفعال المنتظمة تأخذ غالبًا ed، أما الأفعال الشاذة فلها تصريف ثانٍ خاص يجب حفظه.",
+        verbFormsArabic: getVerbForms(base),
+        examples: [
+          { english: "I went to work yesterday.", arabic: "ذهبت إلى العمل أمس. (go → went)" },
+          { english: "I didn't go to work yesterday.", arabic: "لم أذهب إلى العمل أمس. بعد didn't نستخدم go وليس went." },
+        ],
+      };
+    }
+    case "a2-comparatives-superlatives":
+      return {
+        titleArabic: "المقارنة والتفضيل",
+        explanationArabic: "للمقارنة بين شيئين نستخدم غالبًا الصفة + er مع الصفات القصيرة، أو more + الصفة مع الصفات الطويلة، ثم than. توجد صفات شاذة مثل good → better → best وbad → worse → worst.",
+        verbFormsArabic: "good → better → best | bad → worse → worst | fast → faster → fastest",
+        examples: [
+          { english: "This car is faster than that one.", arabic: "هذه السيارة أسرع من تلك." },
+          { english: "This is the best option.", arabic: "هذا هو أفضل اختيار." },
+        ],
+      };
+    case "b1-present-perfect":
+      return {
+        titleArabic: "المضارع التام وتصريف الفعل الثالث",
+        explanationArabic: "يتكون المضارع التام من have أو has + التصريف الثالث للفعل (V3). نستخدم has مع He / She / It، وhave مع I / You / We / They. نستخدم since مع نقطة بداية زمنية، وfor مع مدة زمنية. كلمات ever وyet وalready تحدد معنى التجربة أو التوقيت.",
+        verbFormsArabic: "have / has + V3 | work → worked | write → wrote → written | go → went → gone",
+        examples: [
+          { english: "She has written three reports.", arabic: "لقد كتبت ثلاثة تقارير. (has + V3)" },
+          { english: "I have worked here for five years.", arabic: "أعمل هنا منذ خمس سنوات. for + مدة زمنية." },
+        ],
+      };
+    case "b1-conditionals-first-second":
+      return {
+        titleArabic: "الجمل الشرطية الأولى والثانية",
+        explanationArabic: answer === "were" || answer === "found" || answer === "would"
+          ? "الشرط الثاني يُستخدم لافتراض غير حقيقي أو بعيد الاحتمال في الحاضر أو المستقبل. الصيغة: If + Past Simple, would + المصدر. في الأسلوب الرسمي نستخدم were مع جميع الضمائر في If I were you."
+          : "الشرط الأول يُستخدم لاحتمال حقيقي في المستقبل. الصيغة: If + Present Simple, will + المصدر. لا نضع will عادةً داخل جملة If نفسها.",
+        verbFormsArabic: "الشرط الأول: If + V1 / present, will + V1 | الشرط الثاني: If + V2, would + V1",
+        examples: [
+          { english: "If it rains, we will stay home.", arabic: "إذا أمطرت، فسنبقى في المنزل. احتمال حقيقي." },
+          { english: "If I were you, I would accept.", arabic: "لو كنت مكانك، لقبِلت. افتراض غير حقيقي." },
+        ],
+      };
+    case "b2-passive-voice":
+      return {
+        titleArabic: "المبني للمجهول وتصريفات الفعل",
+        explanationArabic: "في المبني للمجهول نهتم بالفعل أو الشيء الذي وقع عليه الفعل، وليس بمن قام به. الصيغة العامة: verb to be حسب الزمن + التصريف الثالث V3. يجب أن يتغير be مع الزمن والفاعل، بينما يبقى الفعل الرئيسي في V3.",
+        verbFormsArabic: "Present: am / is / are + V3 | Past: was / were + V3 | Future: will be + V3 | Present Perfect: has / have been + V3",
+        examples: [
+          { english: "The report was written yesterday.", arabic: "كُتب التقرير أمس. (was + V3)" },
+          { english: "The results have been announced.", arabic: "تم إعلان النتائج. (have been + V3)" },
+        ],
+      };
+    case "b2-third-conditional-regrets":
+      return {
+        titleArabic: "الشرط الثالث والندم على الماضي",
+        explanationArabic: "نستخدم الشرط الثالث للتحدث عن موقف لم يحدث في الماضي وتخيّل نتيجة مختلفة له. الصيغة: If + had + V3, would have + V3. لا يمكن تغيير الحدث الماضي، لذلك يعبر التركيب عن الندم أو الافتراض المضاد للواقع.",
+        verbFormsArabic: "If-clause: had + V3 | Result: would have + V3 | مثال: practice → practiced → practiced",
+        examples: [
+          { english: "If I had studied, I would have passed.", arabic: "لو كنت قد ذاكرت، لكنت نجحت." },
+          { english: "If she had left earlier, she wouldn't have missed the train.", arabic: "لو غادرت مبكرًا، لما فاتَها القطار." },
+        ],
+      };
+    case "c1-inversion-for-emphasis":
+      return {
+        titleArabic: "القلب النحوي Inversion للتوكيد",
+        explanationArabic: "عندما تبدأ الجملة بتعبير سلبي أو شبه سلبي مثل Seldom أو Rarely أو Under no circumstances، نقلب ترتيب الجملة بوضع الفعل المساعد قبل الفاعل. إذا لم يوجد فعل مساعد في المضارع أو الماضي البسيط نستخدم do / does / did، ثم يأتي الفعل الأساسي في المصدر.",
+        verbFormsArabic: "Present: Rarely does + subject + V1 | Past: Not until then did + subject + V1 | Perfect: Seldom have / had + subject + V3",
+        examples: [
+          { english: "Rarely does he make mistakes.", arabic: "نادرًا ما يرتكب أخطاء. لاحظ does قبل الفاعل ثم make في المصدر." },
+          { english: "Never have I seen this before.", arabic: "لم أرَ هذا من قبل قط. have جاءت قبل الفاعل." },
+        ],
+      };
+    case "c1-mixed-conditionals":
+      return {
+        titleArabic: "الجمل الشرطية المختلطة",
+        explanationArabic: "نستخدم الشرط المختلط عندما يكون الشرط في زمن والنتيجة في زمن آخر. قد نتحدث عن سبب ماضٍ ونتيجة حاضرة، أو صفة حالية أثرت في نتيجة ماضية. نحدد الصيغة من زمن الشرط والنتيجة في الجملة.",
+        verbFormsArabic: "Past condition: If + had + V3 | Present result: would + V1 | Past result: would have + V3",
+        examples: [
+          { english: "If I had studied medicine, I would be a doctor now.", arabic: "لو كنت درست الطب، لكنت طبيبًا الآن. شرط ماضٍ ونتيجة حاضرة." },
+          { english: "If he were more careful, he wouldn't have made that mistake.", arabic: "لو كان أكثر حرصًا، لما ارتكب ذلك الخطأ. صفة حاضرة ونتيجة ماضية." },
+        ],
+      };
+    case "c2-subjunctive-and-nominalization":
+      return {
+        titleArabic: "صيغة Subjunctive الرسمية",
+        explanationArabic: "بعد أفعال وتعبيرات الطلب والتوصية والضرورة مثل demand وrecommend وimperative that نستخدم صيغة المصدر المجرد للفعل دون s، حتى مع He أو She. في النفي نضع not قبل المصدر. وفي المبني للمجهول نستخدم be + V3.",
+        verbFormsArabic: "Base form: adhere / resign / disclose | Negative: not + V1 | Passive: be + V3",
+        examples: [
+          { english: "The manager demanded that he resign.", arabic: "طالب المدير بأن يستقيل. الفعل resign مصدر مجرد دون s." },
+          { english: "It is essential that the form be signed.", arabic: "من الضروري أن يتم توقيع النموذج. be + V3." },
+        ],
+      };
+    default:
+      return {
+        titleArabic: "شرح القاعدة النحوية",
+        explanationArabic: "راجع تركيب الجملة والفاعل والزمن، ثم لاحظ سبب اختيار الإجابة الصحيحة. انتبه إلى الفرق بين المصدر والتصريف الثاني والتصريف الثالث للفعل.",
+        verbFormsArabic: getVerbForms(answer),
+        examples: [
+          { english: prompt.replace("_____", correctAnswer), arabic: "لاحظ موضع الإجابة الصحيحة داخل الجملة." },
+        ],
+      };
+  }
 }
 
 const BLUEPRINTS: QuestionBlueprint[] = [
@@ -568,6 +817,12 @@ export function generate50QuestionQuiz(options: {
     seenPrompts.add(generated.prompt);
     const questionNumber = finalQuestions.length + 1;
 
+    const grammarCoach = buildArabicGrammarCoach(
+      blueprint.topicId,
+      generated.prompt,
+      generated.options[generated.correctIndex],
+    );
+
     finalQuestions.push({
       id: `quiz-q-${questionNumber}-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`,
       questionNumber,
@@ -575,6 +830,10 @@ export function generate50QuestionQuiz(options: {
       options: generated.options,
       correctIndex: generated.correctIndex,
       explanation: generated.explanation,
+      grammarTitleArabic: grammarCoach.titleArabic,
+      explanationArabic: grammarCoach.explanationArabic,
+      verbFormsArabic: grammarCoach.verbFormsArabic,
+      grammarExamples: grammarCoach.examples,
       topicId: blueprint.topicId,
       level: blueprint.level,
     });
@@ -588,6 +847,12 @@ export function generate50QuestionQuiz(options: {
     const questionNumber = finalQuestions.length + 1;
     const uniquePrompt = `[Case ${fillerIdx++}] ${generated.prompt}`;
 
+    const grammarCoach = buildArabicGrammarCoach(
+      blueprint.topicId,
+      uniquePrompt,
+      generated.options[generated.correctIndex],
+    );
+
     finalQuestions.push({
       id: `quiz-q-${questionNumber}-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`,
       questionNumber,
@@ -595,6 +860,10 @@ export function generate50QuestionQuiz(options: {
       options: generated.options,
       correctIndex: generated.correctIndex,
       explanation: generated.explanation,
+      grammarTitleArabic: grammarCoach.titleArabic,
+      explanationArabic: grammarCoach.explanationArabic,
+      verbFormsArabic: grammarCoach.verbFormsArabic,
+      grammarExamples: grammarCoach.examples,
       topicId: blueprint.topicId,
       level: blueprint.level,
     });

@@ -63,27 +63,81 @@ class _LearnHubScreenState extends State<LearnHubScreen>
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text(
-          'Learning & Skills Hub / قسم التعلم',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
-        ),
-        backgroundColor: Colors.white,
+        toolbarHeight: 82,
+        backgroundColor: const Color(0xFF312E81),
+        foregroundColor: Colors.white,
         elevation: 0,
-        foregroundColor: const Color(0xFF1E293B),
-        bottom: TabBar(
-          controller: _tabController,
-          isScrollable: true,
-          labelColor: AppTheme.primaryColor,
-          unselectedLabelColor: const Color(0xFF64748B),
-          indicatorColor: AppTheme.primaryColor,
-          indicatorWeight: 3,
-          labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-          tabs: const [
-            Tab(icon: Icon(Icons.menu_book_rounded, size: 20), text: 'القواعد (Grammar)'),
-            Tab(icon: Icon(Icons.quiz_rounded, size: 20), text: 'اختبار 50 سؤال (Exam)'),
-            Tab(icon: Icon(Icons.record_voice_over_rounded, size: 20), text: 'قوة النطق (Pronunciation)'),
-            Tab(icon: Icon(Icons.headphones_rounded, size: 20), text: 'قوة الاستماع (Listening)'),
+        titleSpacing: 16,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF1E1B4B), Color(0xFF3730A3), Color(0xFF2563EB)],
+              begin: Alignment.centerLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
+        title: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(13),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+              ),
+              child: const Icon(Icons.school_rounded, color: Colors.white, size: 25),
+            ),
+            const SizedBox(width: 11),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'Learning Studio',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white),
+                  ),
+                  SizedBox(height: 3),
+                  Text(
+                    'مساحة تعلمك وتطوير مستواك في الإنجليزية',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 11, color: Color(0xFFDBEAFE), fontWeight: FontWeight.w500),
+                  ),
+                ],
+              ),
+            ),
           ],
+        ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(62),
+          child: Material(
+            color: Colors.white,
+            child: TabBar(
+              controller: _tabController,
+              isScrollable: true,
+              tabAlignment: TabAlignment.start,
+              labelColor: AppTheme.primaryColor,
+              unselectedLabelColor: const Color(0xFF64748B),
+              indicatorColor: AppTheme.primaryColor,
+              indicatorWeight: 3,
+              indicatorSize: TabBarIndicatorSize.label,
+              dividerColor: const Color(0xFFE8ECF4),
+              labelPadding: const EdgeInsets.symmetric(horizontal: 15),
+              labelStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
+              unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+              tabs: const [
+                Tab(icon: Icon(Icons.menu_book_rounded, size: 19), text: 'القواعد (Grammar)'),
+                Tab(icon: Icon(Icons.quiz_rounded, size: 19), text: 'اختبار 50 سؤال'),
+                Tab(icon: Icon(Icons.record_voice_over_rounded, size: 19), text: 'النطق (Pronunciation)'),
+                Tab(icon: Icon(Icons.headphones_rounded, size: 19), text: 'الاستماع (Listening)'),
+              ],
+            ),
+          ),
         ),
       ),
       body: provider.isLearnLoading && provider.grammarTopics.isEmpty
@@ -157,7 +211,12 @@ class _LearnHubScreenState extends State<LearnHubScreen>
                     itemCount: filteredTopics.length,
                     itemBuilder: (context, idx) {
                       final topic = filteredTopics[idx];
-                      return _buildTopicCard(topic);
+                      return Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 920),
+                          child: _buildTopicCard(topic),
+                        ),
+                      );
                     },
                   ),
                 ),
@@ -249,7 +308,9 @@ class _LearnHubScreenState extends State<LearnHubScreen>
                 const SizedBox(width: 8),
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: () async {
+                    onPressed: context.watch<AppProvider>().isLearnLoading
+                        ? null
+                        : () async {
                       final provider = context.read<AppProvider>();
                       final quiz = await provider.fetch50QuestionQuiz(topicId: topic.id);
                       if (quiz != null && mounted) {
@@ -284,9 +345,12 @@ class _LearnHubScreenState extends State<LearnHubScreen>
   Widget _buildQuizExamTab(AppProvider provider) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 860),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
           // Hero Exam Card
           Container(
             width: double.infinity,
@@ -340,16 +404,50 @@ class _LearnHubScreenState extends State<LearnHubScreen>
                   style: TextStyle(color: Colors.white, fontSize: 13, height: 1.5),
                 ),
                 const SizedBox(height: 16),
-                const Row(
+                const Wrap(
+                  spacing: 16,
+                  runSpacing: 8,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
-                    Icon(Icons.check_circle_outline, color: Colors.white70, size: 16),
-                    SizedBox(width: 6),
-                    Text('50 سؤال متعدد الخيارات', style: TextStyle(color: Colors.white, fontSize: 12)),
-                    SizedBox(width: 16),
-                    Icon(Icons.timer_outlined, color: Colors.white70, size: 16),
-                    SizedBox(width: 6),
-                    Text('توقيت حي وتقييم فوري', style: TextStyle(color: Colors.white, fontSize: 12)),
+                    Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.check_circle_outline, color: Colors.white70, size: 16),
+                      SizedBox(width: 6),
+                      Text('50 سؤال متعدد الخيارات', style: TextStyle(color: Colors.white, fontSize: 12)),
+                    ]),
+                    Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.timer_outlined, color: Colors.white70, size: 16),
+                      SizedBox(width: 6),
+                      Text('توقيت حي وتقييم فوري', style: TextStyle(color: Colors.white, fontSize: 12)),
+                    ]),
+                    Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.auto_stories_outlined, color: Colors.white70, size: 16),
+                      SizedBox(width: 6),
+                      Text('شرح نحوي عربي بعد الإجابة', style: TextStyle(color: Colors.white, fontSize: 12)),
+                    ]),
                   ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEEF2FF),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFC7D2FE)),
+            ),
+            child: const Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.lightbulb_outline_rounded, color: AppTheme.primaryColor, size: 21),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'بعد كل إجابة ستجد شرحًا بالعربية للقاعدة، وتصريفات الفعل، وأمثلة مترجمة تساعدك على فهم سبب صحة الإجابة.',
+                    style: TextStyle(color: Color(0xFF3730A3), fontSize: 13, height: 1.55, fontWeight: FontWeight.w600),
+                  ),
                 ),
               ],
             ),
@@ -389,7 +487,9 @@ class _LearnHubScreenState extends State<LearnHubScreen>
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: () async {
+              onPressed: provider.isLearnLoading
+                  ? null
+                  : () async {
                 final quiz = await provider.fetch50QuestionQuiz(level: _examTargetLevel);
                 if (quiz != null && mounted) {
                   Navigator.of(context).push(
@@ -399,9 +499,13 @@ class _LearnHubScreenState extends State<LearnHubScreen>
                   );
                 }
               },
-              icon: const Icon(Icons.play_arrow_rounded, size: 24),
+              icon: provider.isLearnLoading
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Icon(Icons.play_arrow_rounded, size: 24),
               label: Text(
-                'ابدأ اختبار 50 سؤال لمستوى ($_examTargetLevel)',
+                provider.isLearnLoading
+                    ? 'جاري تجهيز الاختبار...'
+                    : 'ابدأ اختبار 50 سؤال لمستوى ($_examTargetLevel)',
                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
               style: ElevatedButton.styleFrom(
@@ -412,7 +516,9 @@ class _LearnHubScreenState extends State<LearnHubScreen>
               ),
             ),
           ),
-        ],
+            ],
+          ),
+        ),
       ),
     );
   }

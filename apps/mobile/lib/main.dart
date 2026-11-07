@@ -147,67 +147,147 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> {
       _currentIndex = 0;
     }
 
-    return Scaffold(
-      body: IndexedStack(index: _currentIndex, children: pages),
-      bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-          border: Border(top: BorderSide(color: Color(0xFFE2E8F0), width: 1)),
-        ),
-        child: BottomNavigationBar(
-          currentIndex: _currentIndex,
-          type: BottomNavigationBarType.fixed,
-          onTap: (index) {
-            setState(() {
-              _currentIndex = index;
-            });
-          },
-          backgroundColor: Colors.white,
-          selectedItemColor: AppTheme.primaryColor,
-          unselectedItemColor: const Color(0xFF94A3B8),
-          selectedLabelStyle: const TextStyle(
-            fontWeight: FontWeight.w700,
-            fontSize: 12,
-          ),
-          unselectedLabelStyle: const TextStyle(
-            fontWeight: FontWeight.w500,
-            fontSize: 12,
-          ),
-          elevation: 0,
-          items: [
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.dashboard_outlined),
-              activeIcon: Icon(Icons.dashboard_rounded),
-              label: 'Dashboard',
-            ),
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.psychology_outlined),
-              activeIcon: Icon(Icons.psychology_rounded),
-              label: 'Practice',
-            ),
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.school_outlined),
-              activeIcon: Icon(Icons.school_rounded),
-              label: 'Learn',
-            ),
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.bookmark_border_rounded),
-              activeIcon: Icon(Icons.bookmark_rounded),
-              label: 'My Words',
-            ),
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline_rounded),
-              activeIcon: Icon(Icons.person_rounded),
-              label: 'Profile',
-            ),
-            if (isAdmin)
-              const BottomNavigationBarItem(
-                icon: Icon(Icons.admin_panel_settings_outlined),
-                activeIcon: Icon(Icons.admin_panel_settings_rounded),
-                label: 'Admin Panel',
-              ),
-          ],
-        ),
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isTabletLayout = constraints.maxWidth >= 800;
+        final extendRail = constraints.maxWidth >= 1120;
+
+        return Scaffold(
+          body: isTabletLayout
+              ? Row(
+                  children: [
+                    Container(
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        border: Border(right: BorderSide(color: Color(0xFFE2E8F0))),
+                      ),
+                      child: SafeArea(
+                        child: NavigationRail(
+                          minWidth: 76,
+                          minExtendedWidth: 218,
+                          extended: extendRail,
+                          selectedIndex: _currentIndex,
+                          groupAlignment: -0.88,
+                          backgroundColor: Colors.white,
+                          labelType: extendRail ? NavigationRailLabelType.none : NavigationRailLabelType.all,
+                          selectedIconTheme: const IconThemeData(color: AppTheme.primaryColor, size: 23),
+                          unselectedIconTheme: const IconThemeData(color: Color(0xFF94A3B8), size: 22),
+                          selectedLabelTextStyle: const TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.w800, fontSize: 11),
+                          unselectedLabelTextStyle: const TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.w600, fontSize: 10),
+                          leading: Padding(
+                            padding: const EdgeInsets.only(top: 12, bottom: 20),
+                            child: Container(
+                              width: 42,
+                              height: 42,
+                              decoration: BoxDecoration(
+                                color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(13),
+                              ),
+                              child: const Icon(Icons.school_rounded, color: AppTheme.primaryColor),
+                            ),
+                          ),
+                          onDestinationSelected: (index) => setState(() => _currentIndex = index),
+                          destinations: [
+                            const NavigationRailDestination(
+                              icon: Icon(Icons.dashboard_outlined),
+                              selectedIcon: Icon(Icons.dashboard_rounded),
+                              label: Text('Dashboard'),
+                            ),
+                            const NavigationRailDestination(
+                              icon: Icon(Icons.psychology_outlined),
+                              selectedIcon: Icon(Icons.psychology_rounded),
+                              label: Text('Practice'),
+                            ),
+                            const NavigationRailDestination(
+                              icon: Icon(Icons.school_outlined),
+                              selectedIcon: Icon(Icons.school_rounded),
+                              label: Text('Learn'),
+                            ),
+                            const NavigationRailDestination(
+                              icon: Icon(Icons.bookmark_border_rounded),
+                              selectedIcon: Icon(Icons.bookmark_rounded),
+                              label: Text('My Words'),
+                            ),
+                            const NavigationRailDestination(
+                              icon: Icon(Icons.person_outline_rounded),
+                              selectedIcon: Icon(Icons.person_rounded),
+                              label: Text('Profile'),
+                            ),
+                            if (isAdmin)
+                              const NavigationRailDestination(
+                                icon: Icon(Icons.admin_panel_settings_outlined),
+                                selectedIcon: Icon(Icons.admin_panel_settings_rounded),
+                                label: Text('Admin Panel'),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: SafeArea(
+                        top: false,
+                        child: IndexedStack(index: _currentIndex, children: pages),
+                      ),
+                    ),
+                  ],
+                )
+              : IndexedStack(index: _currentIndex, children: pages),
+          bottomNavigationBar: isTabletLayout
+              ? null
+              : SafeArea(
+                  top: false,
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      border: Border(top: BorderSide(color: Color(0xFFE2E8F0), width: 1)),
+                    ),
+                    child: BottomNavigationBar(
+                      currentIndex: _currentIndex,
+                      type: BottomNavigationBarType.fixed,
+                      onTap: (index) => setState(() => _currentIndex = index),
+                      backgroundColor: Colors.white,
+                      selectedItemColor: AppTheme.primaryColor,
+                      unselectedItemColor: const Color(0xFF94A3B8),
+                      selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 11),
+                      unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 10),
+                      elevation: 0,
+                      items: [
+                        const BottomNavigationBarItem(
+                          icon: Icon(Icons.dashboard_outlined),
+                          activeIcon: Icon(Icons.dashboard_rounded),
+                          label: 'Dashboard',
+                        ),
+                        const BottomNavigationBarItem(
+                          icon: Icon(Icons.psychology_outlined),
+                          activeIcon: Icon(Icons.psychology_rounded),
+                          label: 'Practice',
+                        ),
+                        const BottomNavigationBarItem(
+                          icon: Icon(Icons.school_outlined),
+                          activeIcon: Icon(Icons.school_rounded),
+                          label: 'Learn',
+                        ),
+                        const BottomNavigationBarItem(
+                          icon: Icon(Icons.bookmark_border_rounded),
+                          activeIcon: Icon(Icons.bookmark_rounded),
+                          label: 'My Words',
+                        ),
+                        const BottomNavigationBarItem(
+                          icon: Icon(Icons.person_outline_rounded),
+                          activeIcon: Icon(Icons.person_rounded),
+                          label: 'Profile',
+                        ),
+                        if (isAdmin)
+                          const BottomNavigationBarItem(
+                            icon: Icon(Icons.admin_panel_settings_outlined),
+                            activeIcon: Icon(Icons.admin_panel_settings_rounded),
+                            label: 'Admin',
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+        );
+      },
     );
   }
 }

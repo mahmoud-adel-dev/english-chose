@@ -21,7 +21,7 @@ void main() {
     await tester.pump();
 
     expect(find.text('القواعد (Grammar)'), findsOneWidget);
-    expect(find.text('اختبار 50 سؤال (Exam)'), findsOneWidget);
+    expect(find.text('اختبار 50 سؤال'), findsOneWidget);
     expect(find.text('قوة النطق (Pronunciation)'), findsOneWidget);
     expect(find.text('قوة الاستماع (Listening)'), findsOneWidget);
   });
@@ -42,6 +42,15 @@ void main() {
           options: ['go', 'goes', 'going', 'is go'],
           correctIndex: 1,
           explanation: 'Third person singular takes goes in Present Simple.',
+          grammarTitleArabic: 'المضارع البسيط وتصريف الفعل',
+          explanationArabic: 'مع المفرد الغائب نضيف s أو es للفعل في الإثبات.',
+          verbFormsArabic: 'go → goes → went → gone → going',
+          grammarExamples: [
+            GrammarExampleModel(
+              english: 'She goes to work every day.',
+              arabic: 'هي تذهب إلى العمل كل يوم.',
+            ),
+          ],
           topicId: 'a1-present-simple',
           level: 'A1',
         ),
@@ -66,5 +75,9 @@ void main() {
     // Verify explanation shows up
     expect(find.textContaining('Explanation'), findsOneWidget);
     expect(find.text('Third person singular takes goes in Present Simple.'), findsOneWidget);
+    expect(find.text('المضارع البسيط وتصريف الفعل'), findsOneWidget);
+    expect(find.textContaining('مع المفرد الغائب'), findsOneWidget);
+    expect(find.text('go → goes → went → gone → going'), findsOneWidget);
+    expect(find.text('هي تذهب إلى العمل كل يوم.'), findsOneWidget);
   });
 }

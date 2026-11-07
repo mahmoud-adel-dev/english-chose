@@ -37,46 +37,100 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
     final provider = context.watch<AppProvider>();
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF5F7FC),
       appBar: AppBar(
-        title: const Row(
-          children: [
-            Icon(
-              Icons.admin_panel_settings_rounded,
-              color: AppTheme.primaryColor,
+        toolbarHeight: 88,
+        backgroundColor: const Color(0xFF172554),
+        foregroundColor: Colors.white,
+        elevation: 0,
+        titleSpacing: 16,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF172554), Color(0xFF312E81), Color(0xFF4338CA)],
+              begin: Alignment.centerLeft,
+              end: Alignment.bottomRight,
             ),
-            SizedBox(width: 8),
-            Flexible(
-              child: Text('AI Governance', overflow: TextOverflow.ellipsis),
-            ),
-          ],
+          ),
         ),
-        bottom: TabBar(
-          controller: _tabController,
-          isScrollable: true,
-          tabAlignment: TabAlignment.start,
-          labelColor: AppTheme.primaryColor,
-          unselectedLabelColor: const Color(0xFF64748B),
-          indicatorColor: AppTheme.primaryColor,
-          tabs: const [
-            Tab(
-              icon: Icon(Icons.analytics_outlined),
-              text: 'Costs & Analytics',
+        title: Row(
+          children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+              ),
+              child: const Icon(Icons.admin_panel_settings_rounded, size: 26, color: Colors.white),
             ),
-            Tab(icon: Icon(Icons.smart_toy_outlined), text: 'AI Models'),
-            Tab(icon: Icon(Icons.alt_route_rounded), text: 'Task Routings'),
-            Tab(icon: Icon(Icons.people_outline_rounded), text: 'Users'),
-            Tab(icon: Icon(Icons.inventory_2_outlined), text: 'Packages'),
-            Tab(icon: Icon(Icons.login_rounded), text: 'Authentication'),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'Admin Command Center',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white),
+                  ),
+                  SizedBox(height: 3),
+                  Text(
+                    'AI Governance  •  System Operations',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 11, color: Color(0xFFDDE4FF), fontWeight: FontWeight.w500),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
         actions: [
-          IconButton(
-            tooltip: 'Refresh Data',
-            icon: const Icon(Icons.refresh_rounded),
-            onPressed: () => provider.fetchAdminData(),
+          Padding(
+            padding: const EdgeInsetsDirectional.only(end: 14),
+            child: IconButton.filledTonal(
+              tooltip: 'Refresh dashboard data',
+              style: IconButton.styleFrom(
+                backgroundColor: Colors.white.withValues(alpha: 0.14),
+                foregroundColor: Colors.white,
+              ),
+              icon: const Icon(Icons.refresh_rounded),
+              onPressed: () => provider.fetchAdminData(),
+            ),
           ),
-          const SizedBox(width: 8),
         ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(62),
+          child: Material(
+            color: Colors.white,
+            child: TabBar(
+              controller: _tabController,
+              isScrollable: true,
+              tabAlignment: TabAlignment.start,
+              labelColor: AppTheme.primaryColor,
+              unselectedLabelColor: const Color(0xFF64748B),
+              indicatorColor: AppTheme.primaryColor,
+              indicatorWeight: 3,
+              indicatorSize: TabBarIndicatorSize.label,
+              dividerColor: const Color(0xFFE8ECF4),
+              labelPadding: const EdgeInsets.symmetric(horizontal: 17),
+              labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
+              unselectedLabelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+              tabs: const [
+                Tab(icon: Icon(Icons.analytics_outlined, size: 19), text: 'Analytics'),
+                Tab(icon: Icon(Icons.smart_toy_outlined, size: 19), text: 'AI Models'),
+                Tab(icon: Icon(Icons.alt_route_rounded, size: 19), text: 'Task Routing'),
+                Tab(icon: Icon(Icons.people_outline_rounded, size: 19), text: 'Users'),
+                Tab(icon: Icon(Icons.inventory_2_outlined, size: 19), text: 'Packages'),
+                Tab(icon: Icon(Icons.login_rounded, size: 19), text: 'Authentication'),
+              ],
+            ),
+          ),
+        ),
       ),
       body: provider.isAdminLoading && provider.adminAnalytics == null
           ? const Center(child: CircularProgressIndicator())

@@ -98,6 +98,10 @@ class QuizQuestionModel {
   final List<String> options;
   final int correctIndex;
   final String explanation;
+  final String grammarTitleArabic;
+  final String explanationArabic;
+  final String verbFormsArabic;
+  final List<GrammarExampleModel> grammarExamples;
   final String topicId;
   final String level;
 
@@ -108,6 +112,10 @@ class QuizQuestionModel {
     required this.options,
     required this.correctIndex,
     required this.explanation,
+    this.grammarTitleArabic = 'الشرح النحوي بالعربي',
+    this.explanationArabic = '',
+    this.verbFormsArabic = '',
+    this.grammarExamples = const [],
     required this.topicId,
     required this.level,
   });
@@ -122,6 +130,12 @@ class QuizQuestionModel {
           .toList(),
       correctIndex: (json['correctIndex'] as num?)?.toInt() ?? 0,
       explanation: json['explanation'] as String? ?? '',
+      grammarTitleArabic: json['grammarTitleArabic'] as String? ?? 'الشرح النحوي بالعربي',
+      explanationArabic: json['explanationArabic'] as String? ?? '',
+      verbFormsArabic: json['verbFormsArabic'] as String? ?? '',
+      grammarExamples: (json['grammarExamples'] as List<dynamic>? ?? [])
+          .map((example) => GrammarExampleModel.fromJson(example as Map<String, dynamic>))
+          .toList(),
       topicId: json['topicId'] as String? ?? '',
       level: json['level'] as String? ?? 'B1',
     );
