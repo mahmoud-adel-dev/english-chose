@@ -4,7 +4,7 @@ export type AnswerValidationResult =
   | { valid: true }
   | {
       valid: false;
-      code: "ARABIC_NOT_ALLOWED" | "GIBBERISH" | "TOO_SHORT";
+      code: "ARABIC_NOT_ALLOWED" | "GIBBERISH" | "TOO_SHORT" | "TOO_LONG";
       message: string;
     };
 
@@ -19,6 +19,8 @@ export interface AssessedLevelResult {
   level: CefrLevel;
   averageScore: number;
 }
+const MAX_ANSWER_CHARACTERS = 5_000;
+
 const MIN_WORDS: Record<CefrLevel, number> = {
   A1: 3,
   A2: 5,
@@ -72,6 +74,14 @@ export function validateEnglishAnswer(
   targetLevel: CefrLevel
 ): AnswerValidationResult {
   const answer = text.trim();
+
+  if (answer.length > MAX_ANSWER_CHARACTERS) {
+    return {
+      valid: false,
+      code: "TOO_LONG",
+      message: `Please keep your answer under ${MAX_ANSWER_CHARACTERS.toLocaleString()} characters so it can be assessed reliably.`,
+    };
+  }
 
   if (/[؀-ۿݐ-ݿࢠ-ࣿ]/u.test(answer)) {
     return {

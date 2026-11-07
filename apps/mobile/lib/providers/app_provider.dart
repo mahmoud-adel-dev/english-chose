@@ -306,6 +306,8 @@ class AppProvider with ChangeNotifier {
   Future<bool> startSession() async {
     _isLoading = true;
     _errorMessage = null;
+    _lastSessionSummary = null;
+    _lastEvaluation = null;
     notifyListeners();
     try {
       final data = await ApiService.post(ApiConfig.sessionStart);
@@ -354,17 +356,12 @@ class AppProvider with ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      // Graceful local completion fallback
-      _lastSessionSummary = {
-        'status': 'COMPLETED',
-        'averageScore': _lastEvaluation?.overallScore.round() ?? 80,
-      };
-      _currentSession = null;
-      _lastEvaluation = null;
-      await refreshProfile();
+      // A failed server request must not be presented as a completed session.
+      // Keep the active session so the learner can retry when connectivity returns.
+      _errorMessage = e.toString();
       _isLoading = false;
       notifyListeners();
-      return true;
+      return false;
     }
   }
 

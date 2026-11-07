@@ -103,8 +103,8 @@ export class GeminiAiProviderAdapter implements IAiProviderAdapter {
 
     return {
       transcript,
-      confidence: 0.95,
-      durationSec: 5.0,
+      // Gemini's transcription response does not expose a calibrated confidence
+      // score or reliable media duration; do not invent either value.
       latencyMs,
     };
   }
@@ -113,7 +113,7 @@ export class GeminiAiProviderAdapter implements IAiProviderAdapter {
     const startTime = Date.now();
     try {
       const ai = this.getClient();
-      const model = ai.getGenerativeModel({ model: "gemini-3.6-flash" });
+      const model = ai.getGenerativeModel({ model: "gemini-2.5-flash" });
       const result = await model.generateContent("Respond with 'OK'");
       const text = result.response.text();
       return {

@@ -1,8 +1,30 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
+
+val keystoreProperties = Properties()
+val keystorePropertiesFile = rootProject.file("key.properties")
+if (keystorePropertiesFile.exists()) {
+    FileInputStream(keystorePropertiesFile).use { keystoreProperties.load(it) }
+}
+
+val releaseStoreFile = System.getenv("ANDROID_KEYSTORE_PATH")
+    ?: keystoreProperties.getProperty("storeFile")
+val releaseStorePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
+    ?: keystoreProperties.getProperty("storePassword")
+val releaseKeyAlias = System.getenv("ANDROID_KEY_ALIAS")
+    ?: keystoreProperties.getProperty("keyAlias")
+val releaseKeyPassword = System.getenv("ANDROID_KEY_PASSWORD")
+    ?: keystoreProperties.getProperty("keyPassword")
+val hasReleaseSigning = !releaseStoreFile.isNullOrBlank() &&
+    !releaseStorePassword.isNullOrBlank() &&
+    !releaseKeyAlias.isNullOrBlank() &&
+    !releaseKeyPassword.isNullOrBlank()
 
 android {
     namespace = "com.englishcoach.mobile"
@@ -25,11 +47,25 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = file(releaseStoreFile!!)
+                storePassword = releaseStorePassword!!
+                keyAlias = releaseKeyAlias!!
+                keyPassword = releaseKeyPassword!!
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            } else {
+                // Never ship a release artifact signed with the public debug key.
+                println("English Coach: release signing is not configured; output will not be publishable until a private keystore is supplied.")
+            }
         }
     }
 }

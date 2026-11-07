@@ -1,12 +1,13 @@
 import { randomBytes } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/auth/password";
-import { signToken } from "@/lib/auth/jwt";
+import { assertJwtConfiguration, signToken } from "@/lib/auth/jwt";
 import { decideGoogleAccountAction, verifyGoogleIdentity } from "@/lib/auth/google-auth";
 import { errorResponse, successResponse } from "../../_helpers";
 
 export async function POST(request: Request) {
   try {
+    assertJwtConfiguration();
     const body = await request.json();
     const idToken = typeof body.idToken === "string" ? body.idToken : "";
     const config = await prisma.googleAuthConfig.findUnique({ where: { id: "google" } });
@@ -79,6 +80,9 @@ export async function POST(request: Request) {
     }, 200);
   } catch (error) {
     console.error("Google login error:", error);
+    if (error instanceof Error && error.message.includes("JWT_SECRET")) {
+      return errorResponse("SERVER_CONFIGURATION_ERROR", "Authentication is temporarily unavailable because the server is not configured correctly.", 500);
+    }
     const message = error instanceof Error ? error.message : "Google sign-in failed";
     return errorResponse("INVALID_GOOGLE_IDENTITY", message, 401);
   }

@@ -6,6 +6,7 @@ class ScoreCard extends StatelessWidget {
   final double score;
   final IconData icon;
   final Color? color;
+  final bool isAssessed;
 
   const ScoreCard({
     super.key,
@@ -13,6 +14,7 @@ class ScoreCard extends StatelessWidget {
     required this.score,
     required this.icon,
     this.color,
+    this.isAssessed = true,
   });
 
   @override
@@ -52,38 +54,51 @@ class ScoreCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 4),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
-              children: [
-                Text(
-                  score.toStringAsFixed(1),
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    color: activeColor,
+            if (isAssessed)
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  Text(
+                    score.toStringAsFixed(1),
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: activeColor,
+                    ),
                   ),
-                ),
-                const Text(
-                  ' / 100',
-                  style: TextStyle(
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w500,
-                    color: Color(0xFF94A3B8),
+                  const Text(
+                    ' / 100',
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF94A3B8),
+                    ),
                   ),
+                ],
+              )
+            else
+              const Text(
+                'Not assessed',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF64748B),
                 ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: (score / 100).clamp(0.0, 1.0),
-                backgroundColor: const Color(0xFFF1F5F9),
-                valueColor: AlwaysStoppedAnimation<Color>(activeColor),
-                minHeight: 4,
               ),
-            ),
+            const SizedBox(height: 4),
+            if (isAssessed)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: (score / 100).clamp(0.0, 1.0),
+                  backgroundColor: const Color(0xFFF1F5F9),
+                  valueColor: AlwaysStoppedAnimation<Color>(activeColor),
+                  minHeight: 4,
+                ),
+              )
+            else
+              const SizedBox(height: 4),
           ],
         ),
       ),

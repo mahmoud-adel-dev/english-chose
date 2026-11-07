@@ -326,6 +326,7 @@ class HomeScreen extends StatelessWidget {
                             score: profile.pronunciationScore,
                             icon: Icons.hearing_rounded,
                             color: const Color(0xFF8B5CF6),
+                            isAssessed: profile.pronunciationScore > 0,
                           ),
                           ScoreCard(
                             title: 'Fluency',

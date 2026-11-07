@@ -317,7 +317,7 @@ class _SessionScreenState extends State<SessionScreen>
                 const Icon(Icons.local_fire_department_rounded, color: Colors.deepOrange, size: 18),
                 const SizedBox(width: 4),
                 Text(
-                  '${provider.profile?.dailyStreak ?? 1}🔥',
+                  '${provider.profile?.dailyStreak ?? 0}🔥',
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     color: Color(0xFFC2410C),
@@ -1697,13 +1697,20 @@ class _SessionScreenState extends State<SessionScreen>
         const SizedBox(width: 6),
         _buildScoreChip('الطلاقة\nFluency', eval.fluencyScore, Icons.record_voice_over),
         const SizedBox(width: 6),
-        _buildScoreChip('النطق\nPronun.', eval.pronunciationScore, Icons.hearing),
+        _buildScoreChip('النطق\nPronun.', eval.pronunciationScore, Icons.hearing, isAssessed: false),
       ],
     );
   }
 
-  Widget _buildScoreChip(String label, double score, IconData icon) {
-    final color = score >= 80
+  Widget _buildScoreChip(
+    String label,
+    double score,
+    IconData icon, {
+    bool isAssessed = true,
+  }) {
+    final color = !isAssessed
+        ? const Color(0xFF64748B)
+        : score >= 80
         ? AppTheme.successColor
         : score >= 50
         ? AppTheme.warningColor
@@ -1722,7 +1729,7 @@ class _SessionScreenState extends State<SessionScreen>
             Icon(icon, color: color, size: 16),
             const SizedBox(height: 2),
             Text(
-              '${score.toStringAsFixed(0)}%',
+              isAssessed ? '${score.toStringAsFixed(0)}%' : 'N/A',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 13,
@@ -1749,14 +1756,15 @@ class _SessionScreenState extends State<SessionScreen>
     AppProvider provider,
     Map<String, dynamic> summary,
   ) {
-    final avgScore = (summary['averageScore'] as num?)?.toDouble() ?? 80.0;
+    final avgScore = (summary['averageScore'] as num?)?.toDouble() ?? 0.0;
     final grammarScore =
         (summary['grammarScore'] as num?)?.toDouble() ?? avgScore;
     final vocabScore =
         (summary['vocabularyScore'] as num?)?.toDouble() ?? avgScore;
-    final fluencyScore =
-        (summary['fluencyScore'] as num?)?.toDouble() ?? avgScore;
-    final streak = provider.profile?.dailyStreak ?? 1;
+    final fluencyScore = (summary['fluencyScore'] as num?)?.toDouble();
+    final answeredCount = (summary['answeredCount'] as num?)?.toInt() ?? 0;
+    final questionsCount = (summary['questionsCount'] as num?)?.toInt() ?? 5;
+    final streak = provider.profile?.dailyStreak ?? 0;
 
     final scoreColor = avgScore >= 80
         ? AppTheme.successColor
@@ -1791,8 +1799,8 @@ class _SessionScreenState extends State<SessionScreen>
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
-              'Outstanding effort! You completed all 5 spoken exercises today with personalized AI feedback.',
+            Text(
+              'You completed $answeredCount of $questionsCount practice exercises with personalized feedback. Keep building your consistency!',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 14,
@@ -1845,7 +1853,7 @@ class _SessionScreenState extends State<SessionScreen>
                       ),
                       _buildSummaryMetric(
                         'Fluency',
-                        '${fluencyScore.round()}%',
+                        fluencyScore == null ? 'N/A' : '${fluencyScore.round()}%',
                         Icons.record_voice_over,
                       ),
                     ],

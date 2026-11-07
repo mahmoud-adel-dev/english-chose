@@ -5,12 +5,16 @@ import { AiTaskType } from "@prisma/client";
 import { authenticateRequest, successResponse, errorResponse } from "@/app/api/_helpers";
 import { QuestionEvaluationResult } from "@english-coach/contracts";
 import { normalizeScore, validateEnglishAnswer } from "@/lib/assessment/answer-policy";
+import { calculateNextDailyStreak } from "@/lib/learning/daily-streak";
+import { resolveUserQuotaTier } from "@/lib/quotas/tier-resolver";
 
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ sessionId: string; questionId: string }> }
 ) {
   let userId = "";
+  let quotaConsumed = false;
+  let submissionPersisted = false;
   try {
     const auth = await authenticateRequest(request);
     if (!auth) {
@@ -20,17 +24,10 @@ export async function POST(
 
     const { sessionId, questionId } = await params;
 
-    // 1. Check and consume question quota
-    const quotaCheck = await QuotaManager.checkAndConsume(userId, "QUESTION");
-    if (!quotaCheck.allowed) {
-      return errorResponse("QUOTA_EXCEEDED", quotaCheck.reason || "Daily question quota exceeded", 429);
-    }
-
     const body = await request.json();
-    const transcript = (body.transcript || "").trim();
+    const transcript = typeof body?.transcript === "string" ? body.transcript.trim() : "";
 
     if (!transcript) {
-      await QuotaManager.refund(userId, "QUESTION");
       return errorResponse("VALIDATION_ERROR", "Answer transcript cannot be empty", 400);
     }
 
@@ -44,20 +41,65 @@ export async function POST(
     });
 
     if (!question || question.sessionId !== sessionId) {
-      await QuotaManager.refund(userId, "QUESTION");
       return errorResponse("NOT_FOUND", "Question not found in session", 404);
     }
 
     if (question.session.userId !== userId) {
-      await QuotaManager.refund(userId, "QUESTION");
       return errorResponse("FORBIDDEN", "You do not own this session", 403);
+    }
+
+    if (question.session.status !== "ACTIVE") {
+      return errorResponse("INVALID_STATE", "This practice session is no longer active.", 409);
+    }
+
+    const quotaTier = await resolveUserQuotaTier(userId);
+    const sessionQuestions = await prisma.sessionQuestion.findMany({
+      where: { sessionId },
+      orderBy: { orderIndex: "asc" },
+      include: { submissions: { orderBy: { attemptNumber: "desc" } } },
+    });
+    const nextUnanswered = sessionQuestions.find((item) => item.submissions.length === 0);
+    const immediatelyPrevious = nextUnanswered
+      ? sessionQuestions.find((item) => item.orderIndex === nextUnanswered.orderIndex - 1)
+      : sessionQuestions[sessionQuestions.length - 1];
+    const previousLatestSubmission = immediatelyPrevious?.submissions[0];
+    const previousCanRetry = Boolean(
+      immediatelyPrevious &&
+      previousLatestSubmission?.retryEligible &&
+      immediatelyPrevious.submissions.length < quotaTier.maxAttemptsPerItem
+    );
+    const isNextUnanswered = nextUnanswered?.id === questionId;
+    const isAllowedRetry = previousCanRetry && immediatelyPrevious?.id === questionId;
+    if (!isNextUnanswered && !isAllowedRetry) {
+      return errorResponse("INVALID_STATE", "Please answer the next question or retry the immediately previous answer if a retry is available.", 409);
     }
 
     const validation = validateEnglishAnswer(transcript, question.session.targetLevel);
     if (!validation.valid) {
-      await QuotaManager.refund(userId, "QUESTION");
       return errorResponse(validation.code, validation.message, 400);
     }
+
+    if (question.submissions.length >= quotaTier.maxAttemptsPerItem) {
+      return errorResponse(
+        "MAX_ATTEMPTS_REACHED",
+        `You have reached the maximum of ${quotaTier.maxAttemptsPerItem} attempts for this question.`,
+        429
+      );
+    }
+
+    // Consume quota only after the answer, ownership, session state, and attempt
+    // limit have all passed validation.
+    const quotaCheck = await QuotaManager.checkAndConsume(userId, "QUESTION");
+    if (!quotaCheck.allowed) {
+      return errorResponse("QUOTA_EXCEEDED", quotaCheck.reason || "Daily question quota exceeded", 429);
+    }
+    quotaConsumed = true;
+
+    const refundConsumedQuota = async () => {
+      if (!quotaConsumed || submissionPersisted) return;
+      quotaConsumed = false;
+      await QuotaManager.refund(userId, "QUESTION");
+    };
 
     const attemptNumber = question.submissions.length + 1;
 
@@ -70,11 +112,10 @@ export async function POST(
         vocabulary: number;
         overall: number;
         fluency?: number;
-        pronunciation?: number;
       };
       explanationMarkdown: string;
       identifiedErrors: Array<{
-        category: "GRAMMAR" | "VOCABULARY" | "SYNTAX" | "PRONUNCIATION_NOTE" | "COMPREHENSION";
+        category: "GRAMMAR" | "VOCABULARY" | "SYNTAX" | "COMPREHENSION";
         wrongSnippet: string;
         correctSnippet: string;
         explanation: string;
@@ -87,10 +128,9 @@ export async function POST(
       const aiResponse = await AiTaskRouter.executeCompletion(
         AiTaskType.ANSWER_EVALUATION,
         {
-          systemPrompt: `You are an encouraging and expert Cambridge English language and pronunciation coach evaluating an Arabic-speaking student.
-Evaluate the learner's response against the given prompt.
-The response was spoken by the student and captured via speech recognition (or typed).
-Pay special attention to spoken English patterns, clarity, natural intonation, and common pronunciation pitfalls.
+          systemPrompt: `You are an encouraging and expert Cambridge English language coach evaluating an Arabic-speaking student.
+Evaluate the learner's English language response against the given prompt. The input is a text transcript and may come from speech recognition or typing.
+Assess grammar, vocabulary, relevance, coherence, and language fluency from the text only. Do not claim to have measured pronunciation, accent, intonation, or phoneme accuracy because no audio recording is supplied to this evaluator.
 
 CRITICAL LANGUAGE INSTRUCTION:
 The learner is an Arabic speaker. To help them understand smoothly and learn effortlessly:
@@ -106,8 +146,8 @@ Structure "explanationMarkdown" with friendly Arabic headers like:
 ### 💡 نصائح للتطوير (Tips for improvement):
 - [Actionable advice in Arabic explaining grammar/word choices]
 
-### 🗣️ نصيحة النطق والطلاقة (Pronunciation & Fluency Tip):
-- [Practical tip in Arabic about linking, stress, or sounds]
+### 🗣️ نصيحة للتحدث بطلاقة (Speaking Tip):
+- [Practical language tip based only on the submitted words; do not claim an acoustic pronunciation measurement]
 
 Return ONLY a valid JSON object matching this structure:
 {
@@ -117,13 +157,12 @@ Return ONLY a valid JSON object matching this structure:
     "grammar": number (0-100),
     "vocabulary": number (0-100),
     "overall": number (0-100),
-    "fluency": number (0-100),
-    "pronunciation": number (0-100)
+    "fluency": number (0-100)
   },
   "explanationMarkdown": string (friendly feedback in Arabic as specified),
   "identifiedErrors": [
     {
-      "category": "GRAMMAR" | "VOCABULARY" | "SYNTAX" | "PRONUNCIATION_NOTE" | "COMPREHENSION",
+      "category": "GRAMMAR" | "VOCABULARY" | "SYNTAX" | "COMPREHENSION",
       "wrongSnippet": string,
       "correctSnippet": string,
       "explanation": string (in Arabic)
@@ -153,6 +192,10 @@ Learner Response: "${transcript}"`,
         }
       }
 
+      if (!parsedEvaluation || typeof parsedEvaluation !== "object" || Array.isArray(parsedEvaluation)) {
+        throw new Error("AI evaluator returned a non-object payload");
+      }
+
       const grammar = normalizeScore(parsedEvaluation?.scores?.grammar);
       const vocabulary = normalizeScore(parsedEvaluation?.scores?.vocabulary);
       const overall = normalizeScore(parsedEvaluation?.scores?.overall);
@@ -163,29 +206,42 @@ Learner Response: "${transcript}"`,
       evaluationData = {
         isMeaningAccurate: parsedEvaluation.isMeaningAccurate === true,
         correctedSentence:
-          typeof parsedEvaluation.correctedSentence === "string"
-            ? parsedEvaluation.correctedSentence
+          typeof parsedEvaluation.correctedSentence === "string" && parsedEvaluation.correctedSentence.trim()
+            ? parsedEvaluation.correctedSentence.trim().slice(0, 2000)
             : transcript,
         scores: {
           grammar,
           vocabulary,
           overall,
           fluency: normalizeScore(parsedEvaluation.scores.fluency) ?? overall,
-          pronunciation: 0,
         },
         explanationMarkdown:
-          typeof parsedEvaluation.explanationMarkdown === "string"
-            ? parsedEvaluation.explanationMarkdown
-            : "Evaluation completed.",
+          typeof parsedEvaluation.explanationMarkdown === "string" && parsedEvaluation.explanationMarkdown.trim()
+            ? parsedEvaluation.explanationMarkdown.trim().slice(0, 12000)
+            : "تم تقييم إجابتك. راجع الجملة المصححة وحاول تطبيق الملاحظات في المحاولة القادمة.",
         identifiedErrors: Array.isArray(parsedEvaluation.identifiedErrors)
           ? parsedEvaluation.identifiedErrors
+              .filter((item: any) =>
+                item &&
+                ["GRAMMAR", "VOCABULARY", "SYNTAX", "COMPREHENSION"].includes(item.category) &&
+                typeof item.wrongSnippet === "string" &&
+                typeof item.correctSnippet === "string" &&
+                typeof item.explanation === "string"
+              )
+              .slice(0, 20)
+              .map((item: any) => ({
+                category: item.category,
+                wrongSnippet: item.wrongSnippet.slice(0, 300),
+                correctSnippet: item.correctSnippet.slice(0, 300),
+                explanation: item.explanation.slice(0, 1200),
+              }))
           : [],
-        retryEligible: attemptNumber < 3 && overall < 60,
+        retryEligible: attemptNumber < quotaTier.maxAttemptsPerItem && overall < 60,
         isPassed: overall >= 60,
       };
     } catch (aiErr) {
       console.warn("AI evaluation unavailable:", aiErr);
-      await QuotaManager.refund(userId, "QUESTION");
+      await refundConsumedQuota();
       return errorResponse(
         "EVALUATION_UNAVAILABLE",
         "Your answer was not saved because reliable evaluation is temporarily unavailable. Please try again.",
@@ -193,95 +249,93 @@ Learner Response: "${transcript}"`,
       );
     }
 
-    if (!evaluationData) {
-      await QuotaManager.refund(userId, "QUESTION");
+    const validatedEvaluation = evaluationData;
+    if (!validatedEvaluation) {
+      await refundConsumedQuota();
       return errorResponse("INVALID_EVALUATION", "The evaluator returned an invalid result.", 503);
     }
 
-    // 4. Save Submission
-    const submission = await prisma.questionSubmission.create({
-      data: {
-        questionId,
-        attemptNumber,
-        rawTranscript: transcript,
-        correctedText: evaluationData.correctedSentence,
-        isMeaningAccurate: evaluationData.isMeaningAccurate,
-        grammarScore: evaluationData.scores.grammar,
-        vocabularyScore: evaluationData.scores.vocabulary,
-        overallScore: evaluationData.scores.overall,
-        explanationMarkdown: evaluationData.explanationMarkdown,
-        identifiedErrors: evaluationData.identifiedErrors,
-        retryEligible: evaluationData.retryEligible,
-      },
-    });
-
-    // 5. Update user profile scores and streak
-    const currentProfile = await prisma.learningProfile.findUnique({ where: { userId } });
-    if (currentProfile) {
-      const newOverall = currentProfile.overallScore > 0 
-        ? (currentProfile.overallScore * 0.7) + (evaluationData.scores.overall * 0.3)
-        : evaluationData.scores.overall;
-      const newGrammar = currentProfile.grammarScore > 0
-        ? (currentProfile.grammarScore * 0.7) + (evaluationData.scores.grammar * 0.3)
-        : evaluationData.scores.grammar;
-      const newVocab = currentProfile.vocabularyScore > 0
-        ? (currentProfile.vocabularyScore * 0.7) + (evaluationData.scores.vocabulary * 0.3)
-        : evaluationData.scores.vocabulary;
-      const evalFluency = evaluationData.scores.fluency ?? evaluationData.scores.overall;
-      const evalPronunciation = evaluationData.scores.pronunciation ?? evaluationData.scores.overall;
-      const newFluency = currentProfile.fluencyScore > 0
-        ? (currentProfile.fluencyScore * 0.7) + (evalFluency * 0.3)
-        : evalFluency;
-      const newPronunciation = currentProfile.pronunciationScore > 0
-        ? (currentProfile.pronunciationScore * 0.7) + (evalPronunciation * 0.3)
-        : evalPronunciation;
-
-      await prisma.learningProfile.update({
-        where: { userId },
+    // 4. Save the submission and its derived profile/session updates atomically.
+    const submission = await prisma.$transaction(async (tx) => {
+      const savedSubmission = await tx.questionSubmission.create({
         data: {
-          overallScore: Math.round(newOverall * 10) / 10,
-          grammarScore: Math.round(newGrammar * 10) / 10,
-          vocabularyScore: Math.round(newVocab * 10) / 10,
-          fluencyScore: Math.round(newFluency * 10) / 10,
-          pronunciationScore: Math.round(newPronunciation * 10) / 10,
-          dailyStreak: currentProfile.dailyStreak > 0 ? currentProfile.dailyStreak : 1,
-          lastTrainedDate: new Date(),
+          questionId,
+          attemptNumber,
+          rawTranscript: transcript,
+          correctedText: validatedEvaluation.correctedSentence,
+          isMeaningAccurate: validatedEvaluation.isMeaningAccurate,
+          grammarScore: validatedEvaluation.scores.grammar,
+          vocabularyScore: validatedEvaluation.scores.vocabulary,
+          fluencyScore: validatedEvaluation.scores.fluency ?? validatedEvaluation.scores.overall,
+          overallScore: validatedEvaluation.scores.overall,
+          explanationMarkdown: validatedEvaluation.explanationMarkdown,
+          identifiedErrors: validatedEvaluation.identifiedErrors,
+          retryEligible: validatedEvaluation.retryEligible,
         },
       });
-    }
 
-    // Check if all questions in this session have at least one submission
-    const allQuestions = await prisma.sessionQuestion.findMany({
-      where: { sessionId },
-      include: { submissions: true },
+      const currentProfile = await tx.learningProfile.findUnique({ where: { userId } });
+      if (currentProfile) {
+        const newOverall = currentProfile.overallScore > 0
+          ? (currentProfile.overallScore * 0.7) + (validatedEvaluation.scores.overall * 0.3)
+          : validatedEvaluation.scores.overall;
+        const newGrammar = currentProfile.grammarScore > 0
+          ? (currentProfile.grammarScore * 0.7) + (validatedEvaluation.scores.grammar * 0.3)
+          : validatedEvaluation.scores.grammar;
+        const newVocab = currentProfile.vocabularyScore > 0
+          ? (currentProfile.vocabularyScore * 0.7) + (validatedEvaluation.scores.vocabulary * 0.3)
+          : validatedEvaluation.scores.vocabulary;
+        const evalFluency = validatedEvaluation.scores.fluency ?? validatedEvaluation.scores.overall;
+        const newFluency = currentProfile.fluencyScore > 0
+          ? (currentProfile.fluencyScore * 0.7) + (evalFluency * 0.3)
+          : evalFluency;
+        const trainedAt = new Date();
+        const nextStreak = calculateNextDailyStreak(
+          currentProfile.dailyStreak,
+          currentProfile.lastTrainedDate,
+          trainedAt
+        );
+
+        await tx.learningProfile.update({
+          where: { userId },
+          data: {
+            overallScore: Math.round(newOverall * 10) / 10,
+            grammarScore: Math.round(newGrammar * 10) / 10,
+            vocabularyScore: Math.round(newVocab * 10) / 10,
+            fluencyScore: Math.round(newFluency * 10) / 10,
+            // Pronunciation remains unchanged until an actual audio assessment exists.
+            dailyStreak: nextStreak,
+            lastTrainedDate: trainedAt,
+          },
+        });
+      }
+
+      // Keep the session ACTIVE until the client requests its final summary.
+      // This lets the learner resume and see the summary if the app closes
+      // after the last answer but before the finish request reaches the server.
+
+      return savedSubmission;
     });
-
-    const allDone = allQuestions.every((q) => q.submissions.length > 0);
-    if (allDone) {
-      await prisma.dailySession.update({
-        where: { id: sessionId },
-        data: { status: "COMPLETED" },
-      });
-    }
+    submissionPersisted = true;
+    quotaConsumed = false;
 
     const result: QuestionEvaluationResult = {
       submissionId: submission.id,
       questionId,
       attemptNumber,
       rawTranscript: transcript,
-      transcriptionConfidence: 0.95,
-      isMeaningAccurate: evaluationData.isMeaningAccurate,
-      correctedSentence: evaluationData.correctedSentence,
-      scores: evaluationData.scores,
-      explanationMarkdown: evaluationData.explanationMarkdown,
-      identifiedErrors: evaluationData.identifiedErrors,
-      retryEligible: evaluationData.retryEligible,
-      isPassed: evaluationData.isPassed,
+      isMeaningAccurate: validatedEvaluation.isMeaningAccurate,
+      correctedSentence: validatedEvaluation.correctedSentence,
+      scores: validatedEvaluation.scores,
+      explanationMarkdown: validatedEvaluation.explanationMarkdown,
+      identifiedErrors: validatedEvaluation.identifiedErrors,
+      retryEligible: validatedEvaluation.retryEligible,
+      isPassed: validatedEvaluation.isPassed,
     };
 
     return successResponse(result, 200);
   } catch (error) {
-    if (userId) {
+    if (userId && quotaConsumed && !submissionPersisted) {
       await QuotaManager.refund(userId, "QUESTION").catch(() => {});
     }
     console.error("Submit question error:", error);

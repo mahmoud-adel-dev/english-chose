@@ -17,7 +17,7 @@ export async function POST(
       where: { id: sessionId },
       include: {
         questions: {
-          include: { submissions: true },
+          include: { submissions: { orderBy: { attemptNumber: "asc" } } },
           orderBy: { orderIndex: "asc" },
         },
       },
@@ -27,17 +27,12 @@ export async function POST(
       return errorResponse("NOT_FOUND", "Session not found", 404);
     }
 
-    // Mark as completed
-    await prisma.dailySession.update({
-      where: { id: sessionId },
-      data: { status: "COMPLETED" },
-    });
-
     // Calculate summary statistics
     let totalScore = 0;
     let grammarTotal = 0;
     let vocabTotal = 0;
     let fluencyTotal = 0;
+    let validFluencyCount = 0;
     let validSubmissionsCount = 0;
 
     for (const q of session.questions) {
@@ -46,12 +41,40 @@ export async function POST(
         totalScore += sub.overallScore;
         grammarTotal += sub.grammarScore ?? sub.overallScore;
         vocabTotal += sub.vocabularyScore ?? sub.overallScore;
-        fluencyTotal += sub.overallScore;
+        if (sub.fluencyScore != null) {
+          fluencyTotal += sub.fluencyScore;
+          validFluencyCount++;
+        }
         validSubmissionsCount++;
       }
     }
 
-    const count = validSubmissionsCount > 0 ? validSubmissionsCount : 1;
+    if (validSubmissionsCount === 0) {
+      return errorResponse("NO_ANSWERS", "Answer at least one exercise before completing this session.", 409);
+    }
+
+    const count = validSubmissionsCount;
+    if (session.status === "EXPIRED") {
+      return errorResponse("INVALID_STATE", "An expired session cannot be completed.", 409);
+    }
+
+    // Do not close an empty session; it remains resumable after this response.
+    if (session.status === "ACTIVE") {
+      const completed = await prisma.dailySession.updateMany({
+        where: { id: sessionId, userId: auth.userId, status: "ACTIVE" },
+        data: { status: "COMPLETED", activeSessionKey: null },
+      });
+      if (completed.count !== 1) {
+        const latest = await prisma.dailySession.findUnique({
+          where: { id: sessionId },
+          select: { status: true },
+        });
+        if (latest?.status !== "COMPLETED") {
+          return errorResponse("INVALID_STATE", "This session changed state before it could be completed.", 409);
+        }
+      }
+    }
+
     const summary = {
       sessionId: session.id,
       targetLevel: session.targetLevel,
@@ -60,7 +83,7 @@ export async function POST(
       averageScore: Math.round(totalScore / count),
       grammarScore: Math.round(grammarTotal / count),
       vocabularyScore: Math.round(vocabTotal / count),
-      fluencyScore: Math.round(fluencyTotal / count),
+      fluencyScore: validFluencyCount > 0 ? Math.round(fluencyTotal / validFluencyCount) : null,
       status: "COMPLETED",
     };
 

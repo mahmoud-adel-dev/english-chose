@@ -10,6 +10,18 @@ import {
   normalizeScore,
   validateEnglishAnswer,
 } from "@/lib/assessment/answer-policy";
+import { calculateNextDailyStreak } from "@/lib/learning/daily-streak";
+
+type AssessmentSubmitOutcome =
+  | { kind: "NEXT"; item: AssessmentItemDto }
+  | { kind: "COMPLETED"; result: AssessmentResultDto };
+
+class AssessmentSubmissionConflictError extends Error {
+  constructor() {
+    super("The active assessment item was already submitted or the assessment state changed.");
+    this.name = "AssessmentSubmissionConflictError";
+  }
+}
 
 export async function POST(
   request: Request,
@@ -21,30 +33,26 @@ export async function POST(
       return errorResponse("UNAUTHORIZED", "Missing or invalid authorization token", 401);
     }
 
-    const { id: assessmentId } = await params;
-    const body = await request.json();
-    const transcript = (body.transcript || "").trim();
+    const { id: assessmentOrItemId } = await params;
+    const body = await request.json().catch(() => ({}));
+    const transcript = typeof body?.transcript === "string" ? body.transcript.trim() : "";
 
     if (!transcript) {
       return errorResponse("VALIDATION_ERROR", "Transcript cannot be empty", 400);
     }
 
     let assessment = await prisma.cefrAssessment.findUnique({
-      where: { id: assessmentId },
-      include: {
-        items: { orderBy: { createdAt: "asc" } },
-      },
+      where: { id: assessmentOrItemId },
+      include: { items: { orderBy: { createdAt: "asc" } } },
     });
 
-    // Support submitting by AssessmentItem ID as passed by the client
+    // The mobile client may submit using the active assessment-item ID.
     let targetItemId: string | null = null;
     if (!assessment) {
       const item = await prisma.assessmentItem.findUnique({
-        where: { id: assessmentId },
+        where: { id: assessmentOrItemId },
         include: {
-          assessment: {
-            include: { items: { orderBy: { createdAt: "asc" } } },
-          },
+          assessment: { include: { items: { orderBy: { createdAt: "asc" } } } },
         },
       });
       if (item) {
@@ -53,21 +61,23 @@ export async function POST(
       }
     }
 
-    if (!assessment || assessment.userId !== auth.userId) {
+    const activeAssessment = assessment;
+    if (!activeAssessment || activeAssessment.userId !== auth.userId) {
       return errorResponse("NOT_FOUND", "Assessment not found", 404);
     }
 
-    if (assessment.status !== "IN_PROGRESS") {
-      return errorResponse("INVALID_STATE", "Assessment is already completed", 400);
+    if (activeAssessment.status !== "IN_PROGRESS") {
+      return errorResponse("INVALID_STATE", "Assessment is already completed", 409);
     }
 
-    // Find current unanswered item or the targeted item
-    const currentItem = targetItemId
-      ? assessment.items.find((it) => it.id === targetItemId) || assessment.items.find((it) => it.transcript === null) || assessment.items[assessment.items.length - 1]
-      : assessment.items.find((it) => it.transcript === null) || assessment.items[assessment.items.length - 1];
-
+    const currentItem = activeAssessment.items.find((item) => item.transcript === null);
     if (!currentItem) {
-      return errorResponse("NOT_FOUND", "No active item found for assessment", 404);
+      return errorResponse("INVALID_STATE", "There is no unanswered item in this assessment.", 409);
+    }
+
+    // Do not let clients skip ahead or resubmit an already answered item.
+    if (targetItemId && targetItemId !== currentItem.id) {
+      return errorResponse("INVALID_STATE", "This is not the active assessment question.", 409);
     }
 
     const validation = validateEnglishAnswer(transcript, currentItem.targetLevel);
@@ -75,27 +85,24 @@ export async function POST(
       return errorResponse(validation.code, validation.message, 400);
     }
 
-    // Real AI Evaluation via AiTaskRouter (Gemini)
-    let evalScore = 0;
-    let feedbackJson: any = null;
+    let evalScore: number | null = null;
+    let feedbackJson: Record<string, unknown> | null = null;
 
     try {
       const aiResponse = await AiTaskRouter.executeCompletion(
         AiTaskType.ANSWER_EVALUATION,
         {
-          systemPrompt: `You are an expert Cambridge English CEFR examiner evaluating an Arabic-speaking student.
-Evaluate the learner's response strictly according to the CEFR framework.
-CRITICAL RULES:
-- If the response is nonsense, gibberish (e.g. repeated letters like 'jhhhh', random typing, repeated dots, or no actual English words), the score MUST BE 0.
-- If the response is off-topic or fails to answer the prompt, score between 0 and 20.
-- If the response is in English but has poor grammar/vocabulary, score between 20 and 50.
-- Score 50-70 for acceptable basic English matching A2/B1.
-- Score 70-100 for fluent, natural English with rich grammar and vocabulary.
+          systemPrompt: `You are an expert Cambridge English CEFR examiner evaluating an Arabic-speaking learner from a text transcript.
+Evaluate only the English language demonstrated in the submitted words: relevance, grammar, vocabulary, coherence, and linguistic fluency. Do not claim to measure pronunciation, accent, intonation, or phoneme accuracy because no audio is supplied to this evaluator.
 
-LANGUAGE REQUIREMENT:
-The "explanation" MUST be written in clear, encouraging, friendly Arabic (باللغة العربية الواضحة) explaining to the learner how well they answered and what they can improve.
+Scoring guidance:
+- Nonsense, gibberish, or no meaningful English words: overall score 0.
+- Off-topic or fails to answer the prompt: overall score 0–20.
+- English with weak grammar and vocabulary: overall score 20–50.
+- Acceptable basic English appropriate to A2/B1: overall score 50–70.
+- Fluent, relevant English with varied grammar and vocabulary: overall score 70–100.
 
-Return ONLY a valid JSON object:
+Write the explanation in clear, encouraging Arabic. Return ONLY a valid JSON object:
 {
   "isMeaningAccurate": boolean,
   "overallScore": number (0-100),
@@ -112,21 +119,40 @@ Learner's Submitted Answer: "${transcript}"`,
         { userId: auth.userId }
       );
 
-      if (aiResponse.parsedJson && typeof aiResponse.parsedJson === "object") {
-        const parsed = aiResponse.parsedJson as any;
-        evalScore = normalizeScore(parsed.overallScore ?? parsed.scores?.overall) ?? -1;
-        feedbackJson = parsed;
+      let parsed: any = null;
+      if (
+        aiResponse.parsedJson &&
+        typeof aiResponse.parsedJson === "object" &&
+        !Array.isArray(aiResponse.parsedJson)
+      ) {
+        parsed = aiResponse.parsedJson;
       } else {
-        const text = aiResponse.content.trim();
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          const parsed = JSON.parse(jsonMatch[0]);
-          evalScore = normalizeScore(parsed.overallScore ?? parsed.scores?.overall) ?? -1;
-          feedbackJson = parsed;
-        }
+        const match = aiResponse.content.trim().match(/\{[\s\S]*\}/);
+        if (match) parsed = JSON.parse(match[0]);
       }
-    } catch (e) {
-      console.warn("AI assessment evaluation unavailable:", e);
+
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+        throw new Error("AI assessment returned an invalid payload.");
+      }
+
+      evalScore = normalizeScore(parsed.overallScore ?? parsed.scores?.overall);
+      if (evalScore === null) {
+        throw new Error("AI assessment returned an invalid overall score.");
+      }
+
+      feedbackJson = {
+        isMeaningAccurate: parsed.isMeaningAccurate === true,
+        overallScore: evalScore,
+        grammarScore: normalizeScore(parsed.grammarScore ?? parsed.scores?.grammar) ?? evalScore,
+        vocabularyScore: normalizeScore(parsed.vocabularyScore ?? parsed.scores?.vocabulary) ?? evalScore,
+        fluencyScore: normalizeScore(parsed.fluencyScore ?? parsed.scores?.fluency) ?? evalScore,
+        explanation:
+          typeof parsed.explanation === "string" && parsed.explanation.trim()
+            ? parsed.explanation.trim().slice(0, 12_000)
+            : "إجابتك تم تقييمها. راجع مستواك والملاحظات وحاول تطبيقها في التدريب القادم.",
+      };
+    } catch (error) {
+      console.warn("AI assessment evaluation unavailable:", error);
       return errorResponse(
         "EVALUATION_UNAVAILABLE",
         "Your answer was not saved because reliable evaluation is temporarily unavailable. Please try again.",
@@ -134,7 +160,9 @@ Learner's Submitted Answer: "${transcript}"`,
       );
     }
 
-    if (evalScore < 0 || !feedbackJson) {
+    const validatedScore = evalScore;
+    const validatedFeedback = feedbackJson;
+    if (validatedScore === null || !validatedFeedback) {
       return errorResponse(
         "INVALID_EVALUATION",
         "The evaluator returned an invalid result. Please try again.",
@@ -142,51 +170,54 @@ Learner's Submitted Answer: "${transcript}"`,
       );
     }
 
-    await prisma.assessmentItem.update({
-      where: { id: currentItem.id },
-      data: {
-        transcript,
-        evalScore,
-        feedbackJson,
-      },
-    });
+    const isLastQuestion = activeAssessment.currentQuestion >= activeAssessment.totalQuestions;
+    const nextLevel = nextAdaptiveLevel(currentItem.targetLevel as CefrLevel, validatedScore);
+    const nextPrompt = isLastQuestion ? null : assessmentPromptForLevel(nextLevel);
 
-    const isLastQuestion = assessment.currentQuestion >= assessment.totalQuestions;
-
-    if (!isLastQuestion) {
-      const nextQuestionNum = assessment.currentQuestion + 1;
-
-      const nextLevel = nextAdaptiveLevel(currentItem.targetLevel, evalScore);
-      const nextPrompt = assessmentPromptForLevel(nextLevel);
-
-      const nextItem = await prisma.assessmentItem.create({
-        data: {
-          assessmentId: assessment.id,
-          targetLevel: nextPrompt.level as any,
-          promptText: nextPrompt.text,
-        },
+    const outcome = await prisma.$transaction<AssessmentSubmitOutcome>(async (tx) => {
+      // Conditional update makes a simultaneous duplicate submission lose cleanly.
+      const itemUpdate = await tx.assessmentItem.updateMany({
+        where: { id: currentItem.id, transcript: null },
+        data: { transcript, evalScore: validatedScore, feedbackJson: validatedFeedback as any },
       });
+      if (itemUpdate.count !== 1) throw new AssessmentSubmissionConflictError();
 
-      await prisma.cefrAssessment.update({
-        where: { id: assessment.id },
-        data: { currentQuestion: nextQuestionNum },
+      if (!isLastQuestion && nextPrompt) {
+        const nextQuestionNum = activeAssessment.currentQuestion + 1;
+        const nextItem = await tx.assessmentItem.create({
+          data: {
+            assessmentId: activeAssessment.id,
+            targetLevel: nextPrompt.level as any,
+            promptText: nextPrompt.text,
+          },
+        });
+
+        const assessmentUpdate = await tx.cefrAssessment.updateMany({
+          where: {
+            id: activeAssessment.id,
+            status: "IN_PROGRESS",
+            currentQuestion: activeAssessment.currentQuestion,
+          },
+          data: { currentQuestion: nextQuestionNum },
+        });
+        if (assessmentUpdate.count !== 1) throw new AssessmentSubmissionConflictError();
+
+        return {
+          kind: "NEXT",
+          item: {
+            id: nextItem.id,
+            itemNumber: nextQuestionNum,
+            totalItems: activeAssessment.totalQuestions,
+            targetLevel: nextItem.targetLevel,
+            promptText: nextItem.promptText,
+          },
+        };
+      }
+
+      const allItems = await tx.assessmentItem.findMany({
+        where: { assessmentId: activeAssessment.id },
+        orderBy: { createdAt: "asc" },
       });
-
-      const nextItemDto: AssessmentItemDto = {
-        id: nextItem.id,
-        itemNumber: nextQuestionNum,
-        totalItems: assessment.totalQuestions,
-        targetLevel: nextItem.targetLevel,
-        promptText: nextItem.promptText,
-      };
-
-      return successResponse(nextItemDto, 200);
-    } else {
-      // Completed assessment!
-      const allItems = await prisma.assessmentItem.findMany({
-        where: { assessmentId: assessment.id },
-      });
-
       const placement = determineAssessedLevel(
         allItems.map((item) => ({
           targetLevel: item.targetLevel as CefrLevel,
@@ -210,11 +241,14 @@ Learner's Submitted Answer: "${transcript}"`,
       const grammarScore = componentAverage("grammarScore", avgScore);
       const vocabularyScore = componentAverage("vocabularyScore", avgScore);
       const fluencyScore = componentAverage("fluencyScore", avgScore);
-
       const completedAt = new Date();
 
-      await prisma.cefrAssessment.update({
-        where: { id: assessment.id },
+      const assessmentUpdate = await tx.cefrAssessment.updateMany({
+        where: {
+          id: activeAssessment.id,
+          status: "IN_PROGRESS",
+          currentQuestion: activeAssessment.currentQuestion,
+        },
         data: {
           status: "COMPLETED",
           assessedLevel: determinedLevel,
@@ -222,8 +256,17 @@ Learner's Submitted Answer: "${transcript}"`,
           completedAt,
         },
       });
+      if (assessmentUpdate.count !== 1) throw new AssessmentSubmissionConflictError();
 
-      await prisma.learningProfile.update({
+      const profile = await tx.learningProfile.findUnique({ where: { userId: auth.userId } });
+      if (!profile) throw new Error("Learning profile was not found for the assessed user.");
+      const nextStreak = calculateNextDailyStreak(
+        profile.dailyStreak,
+        profile.lastTrainedDate,
+        completedAt
+      );
+
+      await tx.learningProfile.update({
         where: { userId: auth.userId },
         data: {
           currentLevel: determinedLevel,
@@ -231,27 +274,37 @@ Learner's Submitted Answer: "${transcript}"`,
           grammarScore,
           vocabularyScore,
           fluencyScore,
-          pronunciationScore: 0,
+          // Placement uses text responses; it cannot produce a valid acoustic pronunciation score.
+          dailyStreak: nextStreak,
           lastTrainedDate: completedAt,
         },
       });
 
-      const resultDto: AssessmentResultDto = {
-        assessmentId: assessment.id,
-        assessedLevel: determinedLevel,
-        overallScore: avgScore,
-        skillBreakdown: {
-          grammar: grammarScore,
-          vocabulary: vocabularyScore,
-          fluency: fluencyScore,
+      return {
+        kind: "COMPLETED",
+        result: {
+          assessmentId: activeAssessment.id,
+          assessedLevel: determinedLevel,
+          overallScore: avgScore,
+          skillBreakdown: {
+            grammar: grammarScore,
+            vocabulary: vocabularyScore,
+            fluency: fluencyScore,
+          },
+          studyPlanSummary: `تم تصنيفك في المستوى (${determinedLevel}). خطتك التدريبية: ركّز على ربط الجمل المعقدة وإثراء حصيلتك من المفردات اليومية والمهنية لتصل إلى المستوى التالي بثقة وسلاسة.`,
+          completedAt: completedAt.toISOString(),
         },
-        studyPlanSummary: `تم تصنيفك في المستوى (${determinedLevel}). خطتك التدريبية: ركّز على ربط الجمل المعقدة وإثراء حصيلتك من المفردات اليومية والمهنية لتصل إلى المستوى التالي بثقة وسلاسة.`,
-        completedAt: completedAt.toISOString(),
       };
+    });
 
-      return successResponse(resultDto, 200);
+    if (outcome.kind === "NEXT") {
+      return successResponse(outcome.item, 200);
     }
+    return successResponse(outcome.result, 200);
   } catch (error) {
+    if (error instanceof AssessmentSubmissionConflictError) {
+      return errorResponse("ASSESSMENT_ITEM_ALREADY_SUBMITTED", "This assessment item has already been submitted. Refresh the assessment to continue.", 409);
+    }
     console.error("Assessment submit error:", error);
     return errorResponse("SERVER_ERROR", "Failed to submit assessment item", 500);
   }

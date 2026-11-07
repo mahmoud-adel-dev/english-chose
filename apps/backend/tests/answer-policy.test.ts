@@ -6,7 +6,7 @@ import {
   normalizeScore,
   validateEnglishAnswer,
 } from "../src/lib/assessment/answer-policy";
-import { allowsMockFallback } from "../src/lib/ai/task-router";
+import { allowsMockFallback, isMockAdapterEnabled } from "../src/lib/ai/task-router";
 import { AiTaskType } from "@prisma/client";
 
 describe("English answer policy", () => {
@@ -19,6 +19,14 @@ describe("English answer policy", () => {
     ["Yes", "TOO_SHORT"],
   ])("rejects unassessable answer %j", (answer, code) => {
     expect(validateEnglishAnswer(answer, "B1")).toMatchObject({ valid: false, code });
+  });
+
+  it("rejects excessively long answers before sending them to an AI provider", () => {
+    const longAnswer = "word ".repeat(1_100);
+    expect(validateEnglishAnswer(longAnswer, "B1")).toMatchObject({
+      valid: false,
+      code: "TOO_LONG",
+    });
   });
 
   it("accepts a relevant-length English response", () => {
@@ -99,6 +107,22 @@ describe("English answer policy", () => {
   it("forbids deterministic mock fallback for learner evaluation tasks", () => {
     expect(allowsMockFallback(AiTaskType.ANSWER_EVALUATION)).toBe(false);
     expect(allowsMockFallback(AiTaskType.CEFR_ASSESSMENT)).toBe(false);
+    expect(allowsMockFallback(AiTaskType.PRONUNCIATION_ASSESSMENT)).toBe(false);
     expect(allowsMockFallback(AiTaskType.QUESTION_GENERATION)).toBe(true);
+  });
+
+  it("never enables mock evaluation or speech transcription", () => {
+    expect(isMockAdapterEnabled(AiTaskType.ANSWER_EVALUATION, "test", "true")).toBe(false);
+    expect(isMockAdapterEnabled(AiTaskType.CEFR_ASSESSMENT, "development", "true")).toBe(false);
+    expect(isMockAdapterEnabled(AiTaskType.SPEECH_TO_TEXT, "test", "true")).toBe(false);
+  });
+
+  it("disables mocks in production even when the opt-in flag is set", () => {
+    expect(isMockAdapterEnabled(AiTaskType.QUESTION_GENERATION, "production", "true")).toBe(false);
+  });
+
+  it("requires explicit opt-in for local development mocks", () => {
+    expect(isMockAdapterEnabled(AiTaskType.QUESTION_GENERATION, "development", "false")).toBe(false);
+    expect(isMockAdapterEnabled(AiTaskType.QUESTION_GENERATION, "development", "true")).toBe(true);
   });
 });

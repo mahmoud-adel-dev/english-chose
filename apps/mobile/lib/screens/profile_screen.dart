@@ -215,6 +215,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           'Pronunciation & Clarity',
                           profile.pronunciationScore,
                           const Color(0xFF8B5CF6),
+                          isAssessed: profile.pronunciationScore > 0,
                         ),
                         const SizedBox(height: 16),
                         _buildSkillRow(
@@ -297,7 +298,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildSkillRow(String label, double score, Color color) {
+  Widget _buildSkillRow(
+    String label,
+    double score,
+    Color color, {
+    bool isAssessed = true,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -313,25 +319,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
             Text(
-              '${score.toStringAsFixed(1)} %',
+              isAssessed ? '${score.toStringAsFixed(1)} %' : 'Not assessed',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 14,
-                color: color,
+                color: isAssessed ? color : const Color(0xFF64748B),
               ),
             ),
           ],
         ),
         const SizedBox(height: 8),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: LinearProgressIndicator(
-            value: (score / 100).clamp(0.0, 1.0),
-            backgroundColor: const Color(0xFFF1F5F9),
-            valueColor: AlwaysStoppedAnimation<Color>(color),
-            minHeight: 8,
-          ),
-        ),
+        if (isAssessed)
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: (score / 100).clamp(0.0, 1.0),
+              backgroundColor: const Color(0xFFF1F5F9),
+              valueColor: AlwaysStoppedAnimation<Color>(color),
+              minHeight: 8,
+            ),
+          )
+        else
+          const SizedBox(height: 8),
       ],
     );
   }

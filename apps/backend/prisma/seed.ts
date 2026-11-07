@@ -36,14 +36,20 @@ async function main() {
   console.log("✅ Quota tiers seeded (FREE, PREMIUM).");
 
   // 2. AI Providers
+  // Keep the mock fixture inactive in production. Runtime routing also has an
+  // independent production guard, so a database misconfiguration cannot turn
+  // deterministic sample output into learner results.
+  const mockProviderStatus = process.env.NODE_ENV === "production"
+    ? ProviderStatus.INACTIVE
+    : ProviderStatus.ACTIVE;
   const mockProvider = await prisma.aiProvider.upsert({
     where: { identifier: "mock-provider" },
-    update: { status: ProviderStatus.ACTIVE },
+    update: { status: mockProviderStatus },
     create: {
       identifier: "mock-provider",
-      name: "Deterministic Mock Provider (Testing)",
+      name: "Deterministic Mock Provider (Development/Test Only)",
       apiKeySecretKey: "MOCK_KEY",
-      status: ProviderStatus.ACTIVE,
+      status: mockProviderStatus,
       priorityOrder: 999,
       maxRpm: 1000
     }
@@ -72,16 +78,16 @@ async function main() {
         modelIdentifier: "mock-model-v1"
       }
     },
-    update: { isActive: true },
+    update: { isActive: process.env.NODE_ENV !== "production" },
     create: {
       providerId: mockProvider.id,
       modelIdentifier: "mock-model-v1",
-      displayName: "Mock Evaluator & Generator",
+      displayName: "Mock Generator (Development/Test Only)",
       contextWindow: 32000,
       supportsJsonMode: true,
       costPerInput1k: 0.0,
       costPerOutput1k: 0.0,
-      isActive: true
+      isActive: process.env.NODE_ENV !== "production"
     }
   });
 
@@ -89,14 +95,14 @@ async function main() {
     where: {
       providerId_modelIdentifier: {
         providerId: geminiProvider.id,
-        modelIdentifier: "gemini-3.8-flash"
+        modelIdentifier: "gemini-2.5-flash"
       }
     },
     update: { isActive: true },
     create: {
       providerId: geminiProvider.id,
-      modelIdentifier: "gemini-3.8-flash",
-      displayName: "Gemini 2.0 Flash (Fast & Low Cost)",
+      modelIdentifier: "gemini-2.5-flash",
+      displayName: "Gemini 2.5 Flash",
       contextWindow: 1048576,
       supportsVision: true,
       supportsAudioIn: true,
@@ -148,12 +154,12 @@ async function main() {
       where: { taskType: item.task },
       update: {
         primaryModelId: geminiFlashModel.id,
-        fallbackModelId: mockModel.id
+        fallbackModelId: null
       },
       create: {
         taskType: item.task,
         primaryModelId: geminiFlashModel.id,
-        fallbackModelId: mockModel.id,
+        fallbackModelId: null,
         systemPromptTpl: item.prompt,
         temperature: item.temp,
         maxTokens: 2048,
@@ -163,54 +169,88 @@ async function main() {
     });
   }
 
-  console.log("✅ AI Task Routing seeded with Primary (Gemini) and Fallback (Mock).");
+  console.log("✅ AI Task Routing seeded with Gemini primary models and no mock fallbacks.");
 
-  // 5. Seed Initial Admin & Demo User
-  const salt = await bcrypt.genSalt(10);
-  const defaultPasswordHash = await bcrypt.hash("Password123!", salt);
+  // 5. Optional administrator bootstrap. Never create public, predictable
+  // credentials such as admin@... / Password123! from a production seed.
+  const adminEmail = process.env.SEED_ADMIN_EMAIL?.trim().toLowerCase();
+  const adminPassword = process.env.SEED_ADMIN_PASSWORD;
+  if (process.env.NODE_ENV === "production" && (!adminEmail || !adminPassword)) {
+    throw new Error("Production seeding requires SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD so no predictable administrator account is left in service.");
+  }
 
-  const admin = await prisma.user.upsert({
-    where: { email: "admin@englishcoach.app" },
-    update: {},
-    create: {
-      email: "admin@englishcoach.app",
-      name: "System Administrator",
-      passwordHash: defaultPasswordHash,
-      role: UserRole.SUPER_ADMIN,
-      profile: {
-        create: {
-          currentLevel: CefrLevel.C2,
-          targetLevel: CefrLevel.C2,
-          overallScore: 100.0
+  if (adminEmail || adminPassword) {
+    if (!adminEmail || !adminPassword || adminPassword.length < 16) {
+      throw new Error("Set both SEED_ADMIN_EMAIL and a SEED_ADMIN_PASSWORD of at least 16 characters to bootstrap the administrator.");
+    }
+
+    const passwordHash = await bcrypt.hash(adminPassword, 12);
+    await prisma.user.upsert({
+      where: { email: adminEmail },
+      update: {
+        passwordHash,
+        role: UserRole.SUPER_ADMIN,
+        isActive: true,
+      },
+      create: {
+        email: adminEmail,
+        name: "System Administrator",
+        passwordHash,
+        role: UserRole.SUPER_ADMIN,
+        profile: {
+          create: {
+            currentLevel: CefrLevel.C2,
+            targetLevel: CefrLevel.C2,
+          }
         }
       }
+    });
+    if (process.env.NODE_ENV === "production") {
+      // Disable the known legacy demo identities unless the administrator
+      // explicitly chose the legacy admin email and rotated its password above.
+      if (adminEmail !== "admin@englishcoach.app") {
+        await prisma.user.updateMany({
+          where: { email: "admin@englishcoach.app" },
+          data: { isActive: false },
+        });
+      }
+      await prisma.user.updateMany({
+        where: { email: "student@englishcoach.app" },
+        data: { isActive: false },
+      });
     }
-  });
+    console.log(`✅ Administrator account bootstrapped for ${adminEmail}.`);
+  } else {
+    console.warn("⚠️ No administrator bootstrap credentials supplied. Existing administrator accounts were left unchanged.");
+  }
 
-  const student = await prisma.user.upsert({
-    where: { email: "student@englishcoach.app" },
-    update: {},
-    create: {
-      email: "student@englishcoach.app",
-      name: "Demo Student",
-      passwordHash: defaultPasswordHash,
-      role: UserRole.STUDENT,
-      profile: {
-        create: {
-          currentLevel: CefrLevel.B1,
-          targetLevel: CefrLevel.B2,
-          overallScore: 68.5,
-          grammarScore: 70.0,
-          vocabularyScore: 65.0,
-          fluencyScore: 72.0,
-          dailyStreak: 3,
-          recurringWeaknesses: ["past-tense-irregular", "prepositions-in-on-at"]
+  // Optional demo account creation is local-only and requires explicit secrets.
+  if (process.env.NODE_ENV !== "production" && process.env.SEED_DEMO_USERS === "true") {
+    const demoEmail = process.env.SEED_DEMO_USER_EMAIL?.trim().toLowerCase();
+    const demoPassword = process.env.SEED_DEMO_USER_PASSWORD;
+    if (!demoEmail || !demoPassword || demoPassword.length < 12) {
+      throw new Error("SEED_DEMO_USERS requires SEED_DEMO_USER_EMAIL and SEED_DEMO_USER_PASSWORD (at least 12 characters).");
+    }
+    const demoHash = await bcrypt.hash(demoPassword, 12);
+    await prisma.user.upsert({
+      where: { email: demoEmail },
+      update: {},
+      create: {
+        email: demoEmail,
+        name: "Demo Student",
+        passwordHash: demoHash,
+        role: UserRole.STUDENT,
+        profile: {
+          create: {
+            currentLevel: CefrLevel.B1,
+            targetLevel: CefrLevel.B2,
+          }
         }
       }
-    }
-  });
+    });
+    console.log(`✅ Optional demo learner created for ${demoEmail}.`);
+  }
 
-  console.log("✅ Users seeded: admin@englishcoach.app & student@englishcoach.app (Password: Password123!)");
   console.log("🎉 Seed finished successfully.");
 }
 

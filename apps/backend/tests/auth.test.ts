@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { hashPassword, verifyPassword } from "../src/lib/auth/password";
 import { signToken, verifyToken, extractBearerToken } from "../src/lib/auth/jwt";
 
@@ -42,8 +42,40 @@ describe("Authentication & Token Security", () => {
 
   it("extracts bearer token from authorization header correctly", () => {
     expect(extractBearerToken("Bearer eyJhbGciOi...")).toBe("eyJhbGciOi...");
+    expect(extractBearerToken("bEaReR eyJhbGciOi...")).toBe("eyJhbGciOi...");
     expect(extractBearerToken("Basic 12345")).toBeNull();
+    expect(extractBearerToken("Bearer token with-spaces")).toBeNull();
     expect(extractBearerToken("")).toBeNull();
     expect(extractBearerToken(undefined)).toBeNull();
+  });
+
+  it("refuses to sign production tokens without a configured secret", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("JWT_SECRET", "");
+    await expect(signToken({
+      userId: "user-123",
+      email: "learner@example.com",
+      role: "STUDENT",
+    })).rejects.toThrow("JWT_SECRET is required in production");
+    vi.unstubAllEnvs();
+  });
+
+  it("rejects a configured JWT secret shorter than 32 bytes", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("JWT_SECRET", "too-short-secret");
+    await expect(signToken({
+      userId: "user-123",
+      email: "learner@example.com",
+      role: "STUDENT",
+    })).rejects.toThrow("JWT_SECRET must contain at least 32 bytes");
+    vi.unstubAllEnvs();
+  });
+
+  it("does not issue tokens for unsupported roles", async () => {
+    await expect(signToken({
+      userId: "user-123",
+      email: "learner@example.com",
+      role: "ROOT",
+    })).rejects.toThrow("invalid user identity or role");
   });
 });

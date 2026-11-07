@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
 import { verifyToken, extractBearerToken, TokenPayload } from "@/lib/auth/jwt";
+import { prisma } from "@/lib/prisma";
 
 export function successResponse<T>(data: T, status = 200) {
   return NextResponse.json(
@@ -34,11 +35,30 @@ export function errorResponse(code: string, message: string, status = 400, detai
   );
 }
 
+/**
+ * Verify the signed token and reload the account's current status and role.
+ * This prevents a stale JWT from retaining admin access after a role change
+ * or continuing to access the API after an account has been suspended.
+ */
 export async function authenticateRequest(request: Request): Promise<TokenPayload | null> {
-  const authHeader = request.headers.get("Authorization");
-  const token = extractBearerToken(authHeader);
+  const token = extractBearerToken(request.headers.get("Authorization"));
   if (!token) return null;
-  return verifyToken(token);
+
+  const tokenPayload = await verifyToken(token);
+  if (!tokenPayload) return null;
+
+  const user = await prisma.user.findUnique({
+    where: { id: tokenPayload.userId },
+    select: { id: true, email: true, role: true, isActive: true },
+  });
+
+  if (!user || !user.isActive) return null;
+
+  return {
+    userId: user.id,
+    email: user.email,
+    role: user.role,
+  };
 }
 
 export async function authenticateAdminRequest(request: Request): Promise<TokenPayload | null> {
@@ -49,4 +69,3 @@ export async function authenticateAdminRequest(request: Request): Promise<TokenP
   }
   return null;
 }
-

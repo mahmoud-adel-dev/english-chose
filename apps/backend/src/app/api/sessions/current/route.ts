@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { authenticateRequest, successResponse, errorResponse } from "../../_helpers";
 import { DailySessionDto } from "@english-coach/contracts";
+import { resolveUserQuotaTier } from "@/lib/quotas/tier-resolver";
 
 export async function GET(request: Request) {
   try {
@@ -27,6 +28,7 @@ export async function GET(request: Request) {
       return errorResponse("NOT_FOUND", "No active session found", 404);
     }
 
+    const quotaTier = await resolveUserQuotaTier(auth.userId);
     const sessionDto: DailySessionDto = {
       id: session.id,
       targetLevel: session.targetLevel,
@@ -44,7 +46,7 @@ export async function GET(request: Request) {
         contextHint: q.contextHint,
         difficultyScore: q.difficultyScore,
         attemptsUsed: q.submissions.length,
-        maxAttempts: 3,
+        maxAttempts: quotaTier.maxAttemptsPerItem,
       })),
     };
 

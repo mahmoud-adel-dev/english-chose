@@ -177,6 +177,7 @@ model DailySession {
   id             String    @id @default(uuid())
   userId         String
   user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activeSessionKey String? @unique
   sessionDate    DateTime  @default(now())
   targetLevel    CefrLevel
   status         String    @default("ACTIVE") // ACTIVE, COMPLETED, EXPIRED
@@ -220,13 +221,14 @@ model QuestionSubmission {
   isMeaningAccurate   Boolean         @default(false)
   grammarScore        Float           @default(0.0)
   vocabularyScore     Float           @default(0.0)
+  fluencyScore        Float?
   overallScore        Float           @default(0.0)
   explanationMarkdown String          @db.Text
   identifiedErrors    Json            @default("[]")
   retryEligible       Boolean         @default(true)
   createdAt           DateTime        @default(now())
 
-  @@index([questionId, attemptNumber])
+  @@unique([questionId, attemptNumber])
 }
 
 // -------------------------------------------------------------

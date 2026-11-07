@@ -37,14 +37,22 @@ export class AiTaskRouter {
     return ["UNTESTED", "ACTIVE", "ACTIVE_LIMITED", "RATE_LIMITED"].includes(health);
   }
 
-  private static async getConfiguredAdapter(provider: {
-    identifier: string;
-    baseUrl: string | null;
-    credentialSource: string;
-    inferenceCredential: unknown;
-    managementCredential: unknown;
-    apiKeySecretKey: string;
-  }): Promise<IAiProviderAdapter | undefined> {
+  private static async getConfiguredAdapter(
+    provider: {
+      identifier: string;
+      baseUrl: string | null;
+      credentialSource: string;
+      inferenceCredential: unknown;
+      managementCredential: unknown;
+      apiKeySecretKey: string;
+    },
+    taskType: AiTaskType
+  ): Promise<IAiProviderAdapter | undefined> {
+    // The deterministic adapter is a development/test fixture, never a production provider.
+    if (provider.identifier === "mock-provider" && !isMockAdapterEnabled(taskType)) {
+      return undefined;
+    }
+
     const registered = this.getAdapter(provider.identifier);
     if (registered) return registered;
 
@@ -110,9 +118,9 @@ export class AiTaskRouter {
       primary.provider.status === ProviderStatus.ACTIVE &&
       this.isCredentialUsable(primary.provider.credentialHealth)
     ) {
-      const adapter = await this.getConfiguredAdapter(primary.provider);
-      if (adapter) {
-        try {
+      try {
+        const adapter = await this.getConfiguredAdapter(primary.provider, taskType);
+        if (adapter) {
           const res = requireAllowedResult(taskType, await this.executeWithTimeout(
             () => adapter.generateCompletion(primary.modelIdentifier, mergedReq),
             timeoutMs
@@ -138,7 +146,8 @@ export class AiTaskRouter {
           });
 
           return res;
-        } catch (err) {
+        }
+      } catch (err) {
           const errMsg = err instanceof Error ? err.message : String(err);
           console.warn(`[AiTaskRouter] Primary model ${primary.modelIdentifier} failed: ${errMsg}. Attempting fallback...`);
 
@@ -153,7 +162,6 @@ export class AiTaskRouter {
             errorMessage: errMsg,
             estimatedCost: 0,
           });
-        }
       }
     }
 
@@ -166,9 +174,9 @@ export class AiTaskRouter {
       fallback.provider.status === ProviderStatus.ACTIVE &&
       this.isCredentialUsable(fallback.provider.credentialHealth)
     ) {
-      const fallbackAdapter = await this.getConfiguredAdapter(fallback.provider);
-      if (fallbackAdapter) {
-        try {
+      try {
+        const fallbackAdapter = await this.getConfiguredAdapter(fallback.provider, taskType);
+        if (fallbackAdapter) {
           const res = requireAllowedResult(taskType, await this.executeWithTimeout(
             () => fallbackAdapter.generateCompletion(fallback.modelIdentifier, mergedReq),
             timeoutMs
@@ -193,7 +201,8 @@ export class AiTaskRouter {
           });
 
           return res;
-        } catch (fallbackErr) {
+        }
+      } catch (fallbackErr) {
           const fallbackErrMsg = fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr);
           await this.logUsage({
             userId: context?.userId,
@@ -207,7 +216,6 @@ export class AiTaskRouter {
             estimatedCost: 0,
           });
           console.warn(`[AiTaskRouter] Fallback model ${fallback.modelIdentifier} failed: ${fallbackErrMsg}`);
-        }
       }
     }
 
@@ -229,14 +237,15 @@ export class AiTaskRouter {
       }
     }
 
-    // 5. Built-in Deterministic Mock Fallback (guarantees zero downtime / no 500 crashes)
-    if (!allowsMockFallback(taskType) && process.env.NODE_ENV === "test") {
-      throw new Error(`No real AI provider is available for ${taskType}`);
+    // 5. Deterministic mock output is permitted only for explicitly non-evaluative
+    // development/test flows. It must never create learner scores or placement results.
+    if (isMockAdapterEnabled(taskType)) {
+      console.warn(`[AiTaskRouter] Using development/test mock adapter for ${taskType}`);
+      const mockAdapter = this.getAdapter("mock-provider") || new MockAiProviderAdapter();
+      return await mockAdapter.generateCompletion("mock-default", mergedReq);
     }
 
-    console.warn(`[AiTaskRouter] Using deterministic fallback adapter for ${taskType}`);
-    const mockAdapter = this.getAdapter("mock-provider") || new MockAiProviderAdapter();
-    return await mockAdapter.generateCompletion("mock-default", mergedReq);
+    throw new Error(`No trustworthy AI provider is available for ${taskType}. Configure an active primary or fallback provider.`);
   }
 
   /**
@@ -246,53 +255,89 @@ export class AiTaskRouter {
     req: SttTranscriptionRequest,
     context?: { userId?: string }
   ): Promise<SttTranscriptionResponse> {
+    let routing: any = null;
     try {
-      const routing = await prisma.aiTaskRouting.findUnique({
+      routing = await prisma.aiTaskRouting.findUnique({
         where: { taskType: AiTaskType.SPEECH_TO_TEXT },
         include: {
           primaryModel: { include: { provider: true } },
           fallbackModel: { include: { provider: true } },
         },
       });
-
-      const primary = routing?.primaryModel;
-      if (primary) {
-        const adapter = await this.getConfiguredAdapter(primary.provider);
-        if (adapter) {
-          try {
-            return await adapter.transcribeAudio(primary.modelIdentifier, req);
-          } catch {
-            // Fallback to secondary if configured
-          }
-        }
-      }
-    } catch (e) {
-      console.warn("[AiTaskRouter] Could not fetch audio transcription routing:", e);
+    } catch (error) {
+      console.warn("[AiTaskRouter] Could not fetch speech-to-text routing:", error);
     }
 
-    // Server-side Gemini STT fallback if key available
+    const candidates = [routing?.primaryModel, routing?.fallbackModel].filter(Boolean);
+    for (const model of candidates) {
+      if (
+        !model.isActive ||
+        !model.isAvailable ||
+        model.provider.status !== ProviderStatus.ACTIVE ||
+        !this.isCredentialUsable(model.provider.credentialHealth)
+      ) {
+        continue;
+      }
+
+      try {
+        const adapter = await this.getConfiguredAdapter(model.provider, AiTaskType.SPEECH_TO_TEXT);
+        if (!adapter) continue;
+        const result = await this.executeWithTimeout(
+          () => adapter.transcribeAudio(model.modelIdentifier, req),
+          routing?.timeoutMs ?? 60_000
+        );
+        if (!result.transcript.trim()) {
+          throw new Error("Speech provider returned an empty transcript.");
+        }
+        return result;
+      } catch (error) {
+        console.warn(
+          `[AiTaskRouter] Speech model ${model.modelIdentifier} failed:`,
+          error instanceof Error ? error.message : String(error)
+        );
+      }
+    }
+
+    // Environment-level Gemini fallback is a real provider, not a mock transcript.
     const envGeminiKey = process.env.GEMINI_API_KEY;
     if (envGeminiKey) {
       try {
         const geminiAdapter = new GeminiAiProviderAdapter(envGeminiKey);
-        return await geminiAdapter.transcribeAudio("gemini-3.6-flash", req);
-      } catch (e) {
-        console.warn("[AiTaskRouter] Gemini audio transcription fallback encountered error:", e);
+        const result = await geminiAdapter.transcribeAudio("gemini-2.5-flash", req);
+        if (!result.transcript.trim()) {
+          throw new Error("Speech provider returned an empty transcript.");
+        }
+        return result;
+      } catch (error) {
+        console.warn("[AiTaskRouter] Gemini speech fallback failed:", error);
       }
     }
 
-    // Default to mock adapter if primary fails
-    const mockAdapter = this.getAdapter("mock-provider") || new MockAiProviderAdapter();
-    return await mockAdapter.transcribeAudio("mock-model-v1", req);
+    throw new Error("No real speech-to-text provider is available. Configure an active speech provider and try again.");
   }
 
   private static async executeWithTimeout<T>(fn: () => Promise<T>, timeoutMs: number): Promise<T> {
-    return Promise.race([
-      fn(),
-      new Promise<T>((_, reject) =>
-        setTimeout(() => reject(new Error(`AI Request timed out after ${timeoutMs}ms`)), timeoutMs)
-      ),
-    ]);
+    const safeTimeoutMs = Number.isFinite(timeoutMs)
+      ? Math.max(1_000, Math.min(timeoutMs, 120_000))
+      : 30_000;
+
+    return new Promise<T>((resolve, reject) => {
+      const timer = setTimeout(
+        () => reject(new Error(`AI request timed out after ${safeTimeoutMs}ms`)),
+        safeTimeoutMs
+      );
+
+      Promise.resolve().then(fn).then(
+        (result) => {
+          clearTimeout(timer);
+          resolve(result);
+        },
+        (error) => {
+          clearTimeout(timer);
+          reject(error);
+        }
+      );
+    });
   }
 
   private static calculateEstimatedCost(
@@ -349,9 +394,26 @@ export function allowsMockFallback(taskType: AiTaskType): boolean {
   return !realEvaluationTasks.includes(taskType);
 }
 
+/**
+ * Mock completions are test fixtures, or an explicitly opted-in local-development
+ * convenience. They are never enabled in production and never used for speech
+ * transcription or any task that produces a learner evaluation.
+ */
+export function isMockAdapterEnabled(
+  taskType: AiTaskType,
+  environment = process.env.NODE_ENV,
+  explicitOptIn = process.env.ALLOW_MOCK_AI
+): boolean {
+  if (!allowsMockFallback(taskType) || taskType === AiTaskType.SPEECH_TO_TEXT) {
+    return false;
+  }
+  if (environment === "test") return true;
+  return environment !== "production" && explicitOptIn === "true";
+}
+
 function requireAllowedResult(taskType: AiTaskType, result: AiCompletionResponse) {
-  if (!allowsMockFallback(taskType) && result.modelIdentifier.startsWith("mock-") && process.env.NODE_ENV === "test") {
-    throw new Error(`A real AI provider is required for ${taskType}`);
+  if (result.modelIdentifier.toLowerCase().startsWith("mock-") && !isMockAdapterEnabled(taskType)) {
+    throw new Error(`A real AI provider is required for ${taskType}; mock results are disabled in this environment.`);
   }
   return result;
 }

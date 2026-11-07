@@ -24,7 +24,7 @@ export interface SttTranscriptionRequest {
 export interface SttTranscriptionResponse {
   transcript: string;
   confidence?: number;
-  durationSec: number;
+  durationSec?: number;
   latencyMs: number;
 }
 

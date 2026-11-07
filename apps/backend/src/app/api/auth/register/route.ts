@@ -1,11 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/auth/password";
-import { signToken } from "@/lib/auth/jwt";
+import { assertJwtConfiguration, signToken } from "@/lib/auth/jwt";
 import { RegisterRequestSchema, AuthResponseData } from "@english-coach/contracts";
 import { successResponse, errorResponse } from "../../_helpers";
 
 export async function POST(request: Request) {
   try {
+    assertJwtConfiguration();
     const body = await request.json();
     const parsed = RegisterRequestSchema.safeParse(body);
     if (!parsed.success) {

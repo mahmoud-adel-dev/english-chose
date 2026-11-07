@@ -75,7 +75,9 @@ export class OpenAiCompatibleRuntimeAdapter implements IAiProviderAdapter {
     if (!response.ok) throw new Error(`Transcription failed (${response.status}).`);
     return {
       transcript: String(body.text || body.transcript || ""),
-      durationSec: Number(body.duration || 0),
+      ...(Number.isFinite(Number(body.duration)) && Number(body.duration) > 0
+        ? { durationSec: Number(body.duration) }
+        : {}),
       latencyMs: Date.now() - started,
     };
   }

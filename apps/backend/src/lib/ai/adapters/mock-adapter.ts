@@ -104,15 +104,10 @@ export class MockAiProviderAdapter implements IAiProviderAdapter {
   }
 
   async transcribeAudio(
-    model: string,
-    req: SttTranscriptionRequest
+    _model: string,
+    _req: SttTranscriptionRequest
   ): Promise<SttTranscriptionResponse> {
-    return {
-      transcript: "I go to store yesterday and buy apple.",
-      confidence: 0.94,
-      durationSec: 3.5,
-      latencyMs: 12,
-    };
+    throw new Error("Mock AI cannot transcribe real learner audio.");
   }
 
   async testConnection(): Promise<ProviderConnectionTestResult> {
