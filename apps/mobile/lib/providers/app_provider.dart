@@ -56,7 +56,7 @@ class AppProvider with ChangeNotifier {
   Map<String, dynamic>? get googleAuthConfig => _googleAuthConfig;
   bool get isGoogleLoginEnabled =>
       _googleAuthConfig?['enabled'] == true &&
-      (_googleAuthConfig?['webClientId']?.toString().isNotEmpty ?? false);
+      isUsableGoogleClientId(_googleAuthConfig?['webClientId']?.toString());
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   bool get isAuthenticated => _user != null;

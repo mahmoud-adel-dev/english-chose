@@ -41,10 +41,7 @@ void main() {
 
   test('blank Google client IDs are not usable', () {
     expect(isUsableGoogleClientId('   '), isFalse);
-    expect(
-      isUsableGoogleClientId('web.apps.googleusercontent.com'),
-      isTrue,
-    );
+    expect(isUsableGoogleClientId('web.apps.googleusercontent.com'), isTrue);
   });
 
   test('Google initialization errors are reported only once', () {
@@ -84,8 +81,10 @@ void main() {
         ),
       );
       expect(
-        tester.widget<AbsorbPointer>(find.byType(AbsorbPointer)).absorbing,
-        isTrue,
+        find.byWidgetPredicate(
+          (widget) => widget is AbsorbPointer && widget.absorbing,
+        ),
+        findsOneWidget,
       );
     },
   );

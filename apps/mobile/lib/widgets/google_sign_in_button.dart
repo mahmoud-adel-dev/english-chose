@@ -23,28 +23,41 @@ class GoogleSignInButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final Widget control;
     if (kIsWeb && enabled) {
-      return buildGoogleWebSignInControl(
+      control = buildGoogleWebSignInControl(
         clientId: clientId,
         onIdToken: onIdToken ?? (_) {},
         onError: onError ?? (_) {},
       );
+    } else {
+      control = OutlinedButton.icon(
+        onPressed: loading || !enabled ? null : onPressed,
+        icon: loading
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Text(
+                'G',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+              ),
+        label: Text(
+          loading ? 'Connecting to Google...' : 'Continue with Google',
+        ),
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+        ),
+      );
     }
-    return OutlinedButton.icon(
-      onPressed: loading || !enabled ? null : onPressed,
-      icon: loading
-          ? const SizedBox(
-              width: 18,
-              height: 18,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-          : const Text(
-              'G',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
-            ),
-      label: Text(loading ? 'Connecting to Google...' : 'Continue with Google'),
-      style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(vertical: 14),
+
+    return AbsorbPointer(
+      absorbing: loading,
+      child: AnimatedOpacity(
+        duration: const Duration(milliseconds: 150),
+        opacity: loading ? 0.6 : 1,
+        child: control,
       ),
     );
   }

@@ -34,6 +34,19 @@ String friendlyGoogleSignInError(Object error) {
   return 'Google sign-in is not available right now. Please try again or use your email.';
 }
 
+bool isUsableGoogleClientId(String? clientId) =>
+    clientId != null && clientId.trim().isNotEmpty;
+
+class GoogleErrorNotificationGate {
+  bool _notified = false;
+
+  bool shouldNotify() {
+    if (_notified) return false;
+    _notified = true;
+    return true;
+  }
+}
+
 String requireGoogleIdToken(String? token) {
   if (token == null || token.isEmpty) {
     throw StateError('Google did not return an identity token.');

@@ -36,6 +36,7 @@ class _GoogleWebSignInControl extends StatefulWidget {
 class _GoogleWebSignInControlState extends State<_GoogleWebSignInControl> {
   StreamSubscription<String>? _tokenSubscription;
   late final Future<void> _initialization;
+  final GoogleErrorNotificationGate _errorGate = GoogleErrorNotificationGate();
 
   @override
   void initState() {
@@ -59,9 +60,11 @@ class _GoogleWebSignInControlState extends State<_GoogleWebSignInControl> {
       future: _initialization,
       builder: (context, snapshot) {
         if (snapshot.hasError) {
-          WidgetsBinding.instance.addPostFrameCallback(
-            (_) => widget.onError(snapshot.error!),
-          );
+          if (_errorGate.shouldNotify()) {
+            WidgetsBinding.instance.addPostFrameCallback(
+              (_) => widget.onError(snapshot.error!),
+            );
+          }
           return const SizedBox.shrink();
         }
         if (snapshot.connectionState != ConnectionState.done) {
