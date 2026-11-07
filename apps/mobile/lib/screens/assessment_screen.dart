@@ -28,7 +28,6 @@ class _AssessmentScreenState extends State<AssessmentScreen>
   String _liveTranscript = '';
   double _soundLevel = 0.0;
   bool _showTextInput = false;
-  bool _autoPlayTts = true;
 
   late AnimationController _micPulseController;
   late AnimationController _speakerPulseController;
@@ -118,26 +117,7 @@ class _AssessmentScreenState extends State<AssessmentScreen>
     final result = provider.lastAssessmentResult;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('CEFR Placement Test'),
-        actions: [
-          if (item != null)
-            IconButton(
-              tooltip: _autoPlayTts ? 'Auto-read ON' : 'Auto-read OFF',
-              icon: Icon(
-                _autoPlayTts
-                    ? Icons.volume_up_rounded
-                    : Icons.volume_off_rounded,
-                color: _autoPlayTts
-                    ? AppTheme.primaryColor
-                    : const Color(0xFF94A3B8),
-              ),
-              onPressed: () {
-                setState(() => _autoPlayTts = !_autoPlayTts);
-              },
-            ),
-        ],
-      ),
+      appBar: AppBar(title: const Text('CEFR Placement Test')),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 720),
@@ -157,13 +137,6 @@ class _AssessmentScreenState extends State<AssessmentScreen>
 
     if (item == null) {
       return _buildIntroView(provider);
-    }
-
-    // Auto-read prompt if configured
-    if (_autoPlayTts && !_isTtsSpeaking && !_isSttListening) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _tts.speak(item.promptText);
-      });
     }
 
     return _buildQuestionView(provider, item);

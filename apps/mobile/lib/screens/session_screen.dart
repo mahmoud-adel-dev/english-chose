@@ -45,7 +45,6 @@ class _SessionScreenState extends State<SessionScreen>
   String _liveTranscript = '';
   double _soundLevel = 0.0;
   bool _showTextInput = false; // Toggle between mic and keyboard
-  bool _autoPlayTts = true;
   String? _activeSupportAction; // 'TRANSLATE' | 'EXPLAIN' | 'MODEL_ANSWER'
 
   late AnimationController _micPulseController;
@@ -89,6 +88,8 @@ class _SessionScreenState extends State<SessionScreen>
 
   Future<void> _showQuestion(DailySessionModel session, int index) async {
     if (index < 0 || index >= session.questions.length) return;
+
+    await _tts.stop();
 
     final question = session.questions[index];
     final draft = await _progressStore.loadDraft(session.id, question.id) ?? '';
@@ -275,19 +276,6 @@ class _SessionScreenState extends State<SessionScreen>
                 );
               },
             ),
-          // Auto-play TTS toggle
-          IconButton(
-            tooltip: _autoPlayTts ? 'Auto-read ON' : 'Auto-read OFF',
-            icon: Icon(
-              _autoPlayTts ? Icons.volume_up_rounded : Icons.volume_off_rounded,
-              color: _autoPlayTts
-                  ? AppTheme.primaryColor
-                  : const Color(0xFF94A3B8),
-            ),
-            onPressed: () {
-              setState(() => _autoPlayTts = !_autoPlayTts);
-            },
-          ),
           const SizedBox(width: 4),
         ],
       ),
@@ -345,13 +333,6 @@ class _SessionScreenState extends State<SessionScreen>
           0,
           session.questions.length - 1,
         )];
-
-    // Auto-play TTS when question changes
-    if (_autoPlayTts && !_isTtsSpeaking && !_isSttListening) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _speakQuestion(question);
-      });
-    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1273,12 +1254,6 @@ class _SessionScreenState extends State<SessionScreen>
       }
       _answerController.clear();
       setState(() => _liveTranscript = '');
-
-      // Read the corrected sentence aloud for learning
-      if (provider.lastEvaluation != null && _autoPlayTts) {
-        await Future.delayed(const Duration(milliseconds: 500));
-        _tts.speak(provider.lastEvaluation!.correctedSentence);
-      }
     } else if (mounted) {
       // Show error to user
       ScaffoldMessenger.of(context).showSnackBar(

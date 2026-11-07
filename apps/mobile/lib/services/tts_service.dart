@@ -100,8 +100,9 @@ class TtsService {
   Future<void> stop() async {
     if (_flutterTts != null) {
       await _flutterTts!.stop();
-      _isSpeaking = false;
     }
+    _isSpeaking = false;
+    onComplete?.call();
   }
 
   /// Set speech rate (0.0 slow → 1.0 fast). Default is 0.45 for learners.
@@ -113,6 +114,9 @@ class TtsService {
 
   /// Dispose of TTS resources.
   Future<void> dispose() async {
+    onStart = null;
+    onComplete = null;
+    onError = null;
     await stop();
     _flutterTts = null;
     _isInitialized = false;
