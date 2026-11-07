@@ -30,3 +30,4 @@ export async function GET(request: Request) {
     return errorResponse("SERVER_ERROR", "Failed to retrieve conversation", 500);
   }
 }
+

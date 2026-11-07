@@ -143,3 +143,4 @@ Respond to the student's latest message now according to your instructions.`;
     return errorResponse("SERVER_ERROR", "Failed to process message", 500);
   }
 }
+

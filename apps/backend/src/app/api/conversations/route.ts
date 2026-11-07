@@ -27,3 +27,4 @@ export async function GET(request: Request) {
     return errorResponse("SERVER_ERROR", "Failed to list conversations", 500);
   }
 }
+
