@@ -1,19 +1,35 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+
+import 'google_sign_in_web_control.dart';
 
 class GoogleSignInButton extends StatelessWidget {
   final bool enabled;
   final bool loading;
   final VoidCallback? onPressed;
+  final String clientId;
+  final ValueChanged<String>? onIdToken;
+  final ValueChanged<Object>? onError;
 
   const GoogleSignInButton({
     super.key,
     required this.enabled,
     this.loading = false,
     this.onPressed,
+    this.clientId = '',
+    this.onIdToken,
+    this.onError,
   });
 
   @override
   Widget build(BuildContext context) {
+    if (kIsWeb && enabled) {
+      return buildGoogleWebSignInControl(
+        clientId: clientId,
+        onIdToken: onIdToken ?? (_) {},
+        onError: onError ?? (_) {},
+      );
+    }
     return OutlinedButton.icon(
       onPressed: loading || !enabled ? null : onPressed,
       icon: loading

@@ -166,6 +166,25 @@ class AppProvider with ChangeNotifier {
     try {
       final clientId = _googleAuthConfig?['webClientId']?.toString() ?? '';
       final idToken = await GoogleSignInService.instance.signIn(clientId);
+      return await loginWithGoogleIdToken(idToken, manageLoading: false);
+    } catch (e) {
+      _errorMessage = friendlyGoogleSignInError(e);
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> loginWithGoogleIdToken(
+    String idToken, {
+    bool manageLoading = true,
+  }) async {
+    if (manageLoading) {
+      _isLoading = true;
+      _errorMessage = null;
+      notifyListeners();
+    }
+    try {
       final data = await ApiService.post(
         ApiConfig.googleLogin,
         body: {'idToken': idToken},
@@ -179,11 +198,17 @@ class AppProvider with ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _errorMessage = e.toString();
+      _errorMessage = friendlyGoogleSignInError(e);
       _isLoading = false;
       notifyListeners();
       return false;
     }
+  }
+
+  void reportGoogleSignInError(Object error) {
+    _errorMessage = friendlyGoogleSignInError(error);
+    _isLoading = false;
+    notifyListeners();
   }
 
   Future<bool> register(String name, String email, String password) async {

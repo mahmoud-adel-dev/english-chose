@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:mobile/main.dart';
@@ -18,5 +19,9 @@ void main() {
 
     // Verify English Coach AI title is present
     expect(find.text('English Coach AI'), findsOneWidget);
+    expect(find.text('Quick Login (Demo Student)'), findsNothing);
+    expect(find.text('Quick Login (Admin Dashboard)'), findsNothing);
+    expect(find.text('student@englishcoach.app'), findsNothing);
+    expect(find.byType(TextFormField), findsNWidgets(2));
   });
 }
