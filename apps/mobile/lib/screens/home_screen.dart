@@ -313,7 +313,7 @@ class HomeScreen extends StatelessWidget {
                         mainAxisSpacing: 12,
                         childAspectRatio: isWide
                             ? 1.3
-                            : (isMedium ? 1.25 : 1.15),
+                            : (isMedium ? 1.2 : 1.02),
                         children: [
                           ScoreCard(
                             title: 'Overall Score',

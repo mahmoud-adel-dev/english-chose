@@ -21,34 +21,62 @@ export class MockAiProviderAdapter implements IAiProviderAdapter {
 
     // Check if the request is an Answer Evaluation request
     if (promptLower.includes("evaluat") || promptLower.includes("answer")) {
-      const evaluationResult = {
-        isMeaningAccurate: true,
-        overallScore: 82,
-        grammarScore: 85,
-        vocabularyScore: 80,
-        fluencyScore: 85,
-        explanation:
-          "Good effort! You expressed your thoughts clearly with understandable vocabulary and reasonable structure.",
-        correctedSentence: "I went to the store yesterday to buy some groceries.",
-        scores: {
-          grammar: 85,
-          vocabulary: 80,
-          overall: 82,
-          fluency: 85,
-        },
-        explanationMarkdown:
-          "Great effort! You used the correct past tense for the main verb. To sound more natural, make sure to include the preposition before the noun.",
-        identifiedErrors: [
-          {
-            category: "GRAMMAR",
-            wrongSnippet: "I go to store",
-            correctSnippet: "I went to the store",
-            explanation: "In English, use the past simple 'went' when referring to finished past time like 'yesterday'.",
-          },
-        ],
-        retryEligible: true,
-        isPassed: true,
-      };
+      const answerMatch = req.userPrompt.match(/Learner(?:'s)? Submitted Answer:\s*"([^"]*)"/i);
+      const studentAnswer = (answerMatch ? answerMatch[1] : req.userPrompt).trim();
+      const hasArabic = /[\u0600-\u06FF]/.test(studentAnswer);
+
+      const evaluationResult = hasArabic
+        ? {
+            isMeaningAccurate: false,
+            overallScore: 20,
+            grammarScore: 15,
+            vocabularyScore: 20,
+            fluencyScore: 25,
+            explanation:
+              "تم رصد إدخال باللغة العربية. نرجو التحدث أو الكتابة باللغة الإنجليزية حصراً ليتمكن المدرب من قياس مستواك وتقديم تقييم دقيق لنطقك وقواعدك.",
+            correctedSentence: "Learning English is essential for my future career and travel opportunities.",
+            scores: {
+              grammar: 15,
+              vocabulary: 20,
+              overall: 20,
+              fluency: 25,
+            },
+            explanationMarkdown:
+              "### ⚠️ تنبيه حول لغة الإجابة\n- تم رصد كلمات أو حروف عربية في الإجابة المسجلة.\n- للحصول على تقييم دقيق في سلم CEFR، يُرجى الإجابة باللغة الإنجليزية حصراً عبر الميكروفون أو لوحة المفاتيح.\n\n### 💡 جرب صياغة مثل:\n*\"I think English is important because it helps me get a better job.\"*",
+            identifiedErrors: [
+              {
+                category: "LANGUAGE_MISMATCH",
+                wrongSnippet: studentAnswer.slice(0, 30),
+                correctSnippet: "English response required",
+                explanation: "يرجى استخدام اللغة الإنجليزية فقط لتشخيص مهارات التحدث بدقة.",
+              },
+            ],
+            retryEligible: true,
+            isPassed: false,
+          }
+        : {
+            isMeaningAccurate: true,
+            overallScore: 82,
+            grammarScore: 85,
+            vocabularyScore: 80,
+            fluencyScore: 82,
+            explanation:
+              "أحسنت! إجابتك مفهومة وواضحة، وقد استخدمت مفردات ملائمة للسياق مع ترابط جيد في الجمل.",
+            correctedSentence: studentAnswer.length > 5
+              ? studentAnswer
+              : "I can see my laptop, my phone, and my books on the desk.",
+            scores: {
+              grammar: 85,
+              vocabulary: 80,
+              overall: 82,
+              fluency: 82,
+            },
+            explanationMarkdown:
+              "### 🌟 ما أحسنت فيه\n- صياغة الفكرة بوضوح واستخدام كلمات مناسبة للسياق.\n- تسلسل الأفكار كان سهلاً ومترابطاً.\n\n### 💡 نصائح للتطوير\n- حاول دمج أدوات الربط مثل (because, so, moreover) لتبدو الجمل أكثر تدفقاً.\n\n### 🗣️ نصيحة النطق والطلاقة\n- انتبه للوصل الصوتي بين الكلمات القصيرة (مثل and + my) لنطق أكثر سلاسة وطبيعية.",
+            identifiedErrors: [],
+            retryEligible: true,
+            isPassed: true,
+          };
 
       return {
         content: JSON.stringify(evaluationResult),

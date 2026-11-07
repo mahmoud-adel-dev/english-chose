@@ -133,8 +133,8 @@ class _LearnHubScreenState extends State<LearnHubScreen>
               tabs: const [
                 Tab(icon: Icon(Icons.menu_book_rounded, size: 19), text: 'القواعد (Grammar)'),
                 Tab(icon: Icon(Icons.quiz_rounded, size: 19), text: 'اختبار 50 سؤال'),
-                Tab(icon: Icon(Icons.record_voice_over_rounded, size: 19), text: 'النطق (Pronunciation)'),
-                Tab(icon: Icon(Icons.headphones_rounded, size: 19), text: 'الاستماع (Listening)'),
+                Tab(icon: Icon(Icons.record_voice_over_rounded, size: 19), text: 'قوة النطق (Pronunciation)'),
+                Tab(icon: Icon(Icons.headphones_rounded, size: 19), text: 'قوة الاستماع (Listening)'),
               ],
             ),
           ),

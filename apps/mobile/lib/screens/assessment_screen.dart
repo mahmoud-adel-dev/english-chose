@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../config/theme.dart';
 import '../providers/app_provider.dart';
@@ -117,7 +118,83 @@ class _AssessmentScreenState extends State<AssessmentScreen>
     final result = provider.lastAssessmentResult;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('CEFR Placement Test')),
+      appBar: AppBar(
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Text(
+                  'تحديد المستوى',
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                ),
+                if (item != null) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      item.targetLevel,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.primaryColor,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            const Text(
+              'CEFR Placement Test • Adaptive',
+              style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+            ),
+          ],
+        ),
+        actions: [
+          if (item != null && result == null)
+            Container(
+              margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                '${item.itemNumber}/${item.totalItems}',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.primaryColor,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+        ],
+        bottom: item != null && result == null
+            ? PreferredSize(
+                preferredSize: const Size.fromHeight(4),
+                child: TweenAnimationBuilder<double>(
+                  duration: const Duration(milliseconds: 400),
+                  curve: Curves.easeInOut,
+                  tween: Tween<double>(
+                    begin: 0,
+                    end: (item.itemNumber) / (item.totalItems <= 0 ? 6.0 : item.totalItems.toDouble()),
+                  ),
+                  builder: (context, value, _) {
+                    return LinearProgressIndicator(
+                      value: value,
+                      backgroundColor: const Color(0xFFE2E8F0),
+                      valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+                      minHeight: 4,
+                    );
+                  },
+                ),
+              )
+            : null,
+      ),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 720),
@@ -673,18 +750,27 @@ class _AssessmentScreenState extends State<AssessmentScreen>
     if (text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please speak or type your answer before proceeding.'),
+          content: Text('يرجى التحدث أو كتابة إجابتك بالإنجليزية أولاً (Please speak or type your answer).'),
           backgroundColor: AppTheme.warningColor,
         ),
       );
       return;
     }
     _tts.stop();
+    HapticFeedback.lightImpact();
     final success = await provider.submitAssessmentAnswer(text);
     if (success) {
       _answerController.clear();
       setState(() => _liveTranscript = '');
+
+      if (provider.lastAssessmentResult != null) {
+        HapticFeedback.heavyImpact();
+        _tts.speak("Congratulations! Your assessment is complete.");
+      } else {
+        HapticFeedback.mediumImpact();
+      }
     } else if (mounted && provider.errorMessage != null) {
+      HapticFeedback.vibrate();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(provider.errorMessage!),
@@ -695,81 +781,145 @@ class _AssessmentScreenState extends State<AssessmentScreen>
   }
 
   Widget _buildResultView(AppProvider provider, dynamic result) {
+    final levelColor = AppTheme.getLevelColor(result.assessedLevel);
     return Card(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(color: levelColor.withValues(alpha: 0.3), width: 1.5),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: const EdgeInsets.all(28),
         child: Column(
           children: [
             const Text(
-              '🎉 Assessment Complete!',
+              '🎉 تهانينا! اكتمل اختبار تحديد المستوى',
+              textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 24,
+                fontSize: 20,
                 fontWeight: FontWeight.w800,
                 color: Color(0xFF0F172A),
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 4),
+            const Text(
+              'CEFR Placement Test Completed',
+              style: TextStyle(
+                fontSize: 13,
+                color: Color(0xFF64748B),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text('⭐ ⭐ ⭐', style: TextStyle(fontSize: 22)),
+              ],
+            ),
+            const SizedBox(height: 16),
             Container(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(26),
               decoration: BoxDecoration(
-                color: AppTheme.getLevelColor(
-                  result.assessedLevel,
-                ).withValues(alpha: 0.12),
+                color: levelColor.withValues(alpha: 0.12),
                 shape: BoxShape.circle,
+                border: Border.all(color: levelColor.withValues(alpha: 0.3), width: 2),
               ),
               child: Text(
                 result.assessedLevel,
                 style: TextStyle(
-                  fontSize: 48,
+                  fontSize: 52,
                   fontWeight: FontWeight.w900,
-                  color: AppTheme.getLevelColor(result.assessedLevel),
+                  color: levelColor,
                 ),
               ),
             ),
             const SizedBox(height: 16),
             Text(
-              'Assessed CEFR Level: ${result.assessedLevel}',
+              'المستوى المعتمد: Level ${result.assessedLevel}',
               style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF334155),
+                color: Color(0xFF1E293B),
               ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              'Overall Score: ${result.overallScore.toStringAsFixed(1)} / 100',
-              style: const TextStyle(
-                fontSize: 14,
-                color: Color(0xFF64748B),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 6),
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
               decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
+                color: const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
-                result.studyPlanSummary,
-                textAlign: TextAlign.center,
+                'الدرجة الكلية (Overall Score): ${result.overallScore.toStringAsFixed(1)} / 100',
                 style: const TextStyle(
-                  fontSize: 14,
+                  fontSize: 13,
                   color: Color(0xFF475569),
-                  height: 1.5,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),
-            const SizedBox(height: 32),
-            ElevatedButton.icon(
-              onPressed: () {
-                _tts.stop();
-                widget.onFinish();
-              },
-              icon: const Icon(Icons.home_rounded),
-              label: const Text('Back to Home Dashboard'),
+            const SizedBox(height: 24),
+
+            // Study Plan Container
+            Container(
+              padding: const EdgeInsets.all(18),
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.auto_stories_rounded, color: AppTheme.primaryColor, size: 20),
+                      SizedBox(width: 8),
+                      Text(
+                        'الخطة التعليمية المقترحة لمستواك:',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF0F172A),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    result.studyPlanSummary,
+                    style: const TextStyle(
+                      fontSize: 13.5,
+                      color: Color(0xFF334155),
+                      height: 1.6,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 28),
+
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  _tts.stop();
+                  widget.onFinish();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryColor,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                icon: const Icon(Icons.rocket_launch_rounded, size: 20),
+                label: const Text(
+                  'ابدأ التدريب اليومي الآن 🚀 (Start Practice)',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                ),
+              ),
             ),
           ],
         ),

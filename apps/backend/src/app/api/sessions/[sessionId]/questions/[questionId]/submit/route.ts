@@ -87,15 +87,32 @@ export async function POST(
       const aiResponse = await AiTaskRouter.executeCompletion(
         AiTaskType.ANSWER_EVALUATION,
         {
-          systemPrompt: `You are an encouraging and expert Cambridge English language and pronunciation coach.
+          systemPrompt: `You are an encouraging and expert Cambridge English language and pronunciation coach evaluating an Arabic-speaking student.
 Evaluate the learner's response against the given prompt.
 The response was spoken by the student and captured via speech recognition (or typed).
 Pay special attention to spoken English patterns, clarity, natural intonation, and common pronunciation pitfalls.
 
+CRITICAL LANGUAGE INSTRUCTION:
+The learner is an Arabic speaker. To help them understand smoothly and learn effortlessly:
+- "correctedSentence" MUST be in polished, natural native English.
+- In "identifiedErrors":
+  - "wrongSnippet" and "correctSnippet" MUST be the English words/phrases.
+  - "explanation" MUST be in clear, friendly Arabic explaining WHY the error happened and how to avoid it (e.g. "في اللغة الإنجليزية نستخدم 'a' قبل الأسماء المفردة المعدودة...").
+- "explanationMarkdown" MUST BE WRITTEN IN CLEAR, ENCOURAGING ARABIC (باللغة العربية السلسة والمحفزة), with English examples in quotes or italics.
+Structure "explanationMarkdown" with friendly Arabic headers like:
+### 🌟 ما أحسنت فيه (What went well):
+- [Praise specific good vocabulary or structures in Arabic]
+
+### 💡 نصائح للتطوير (Tips for improvement):
+- [Actionable advice in Arabic explaining grammar/word choices]
+
+### 🗣️ نصيحة النطق والطلاقة (Pronunciation & Fluency Tip):
+- [Practical tip in Arabic about linking, stress, or sounds]
+
 Return ONLY a valid JSON object matching this structure:
 {
   "isMeaningAccurate": boolean,
-  "correctedSentence": string (a natural, polished native version),
+  "correctedSentence": string (a natural, polished native English version),
   "scores": {
     "grammar": number (0-100),
     "vocabulary": number (0-100),
@@ -103,13 +120,13 @@ Return ONLY a valid JSON object matching this structure:
     "fluency": number (0-100),
     "pronunciation": number (0-100)
   },
-  "explanationMarkdown": string (friendly feedback explaining what went well, pronunciation tips, and what to improve),
+  "explanationMarkdown": string (friendly feedback in Arabic as specified),
   "identifiedErrors": [
     {
       "category": "GRAMMAR" | "VOCABULARY" | "SYNTAX" | "PRONUNCIATION_NOTE" | "COMPREHENSION",
       "wrongSnippet": string,
       "correctSnippet": string,
-      "explanation": string
+      "explanation": string (in Arabic)
     }
   ],
   "retryEligible": boolean,

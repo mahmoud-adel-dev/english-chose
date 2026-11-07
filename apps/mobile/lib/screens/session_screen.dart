@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../config/theme.dart';
 import '../widgets/english_answer_formatter.dart';
@@ -124,6 +125,26 @@ class _SessionScreenState extends State<SessionScreen>
     );
   }
 
+  void _triggerCelebration(double score, bool isPassed) {
+    if (isPassed) {
+      HapticFeedback.heavyImpact();
+      final praises = [
+        "Awesome job! Brilliant answer!",
+        "Great work! You nailed it!",
+        "Excellent! Keep up the momentum!",
+        "Fantastic answer! Well done!",
+      ];
+      final praise = praises[(score.toInt()) % praises.length];
+      Future.delayed(const Duration(milliseconds: 350), () {
+        if (mounted && !_isTtsSpeaking) {
+          _tts.speak(praise);
+        }
+      });
+    } else {
+      HapticFeedback.lightImpact();
+    }
+  }
+
   Future<void> _initAudioServices() async {
     // Initialize TTS
     await _tts.initialize();
@@ -237,36 +258,100 @@ class _SessionScreenState extends State<SessionScreen>
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Daily Practice'),
-        actions: [
-          if (session != null && session.status == 'ACTIVE')
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
+        elevation: 0,
+        backgroundColor: Colors.white,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.psychology_rounded, color: AppTheme.primaryColor, size: 20),
+                const SizedBox(width: 8),
+                const Text(
+                  'التدريب اليومي',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF0F172A),
                   ),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    'Q ${_currentQuestionIndex + 1} / ${session.questions.length}',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.primaryColor,
-                      fontSize: 14,
+                ),
+                if (session != null) ...[
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      session.targetLevel,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.primaryColor,
+                      ),
                     ),
                   ),
+                ],
+              ],
+            ),
+            const Text(
+              'Daily Practice • Spoken English',
+              style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+            ),
+          ],
+        ),
+        actions: [
+          // Daily Streak Flame Badge
+          Container(
+            margin: const EdgeInsets.symmetric(vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF7ED),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: const Color(0xFFFFEDD5)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.local_fire_department_rounded, color: Colors.deepOrange, size: 18),
+                const SizedBox(width: 4),
+                Text(
+                  '${provider.profile?.dailyStreak ?? 1}🔥',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFFC2410C),
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+
+          // Question Progress Pill
+          if (session != null && session.status == 'ACTIVE')
+            Container(
+              margin: const EdgeInsets.symmetric(vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                '${_currentQuestionIndex + 1}/${session.questions.length}',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.primaryColor,
+                  fontSize: 13,
                 ),
               ),
             ),
+
           if (provider.isAdmin)
             IconButton(
               tooltip: 'Diagnostic Logs',
-              icon: const Icon(Icons.receipt_long_rounded),
+              icon: const Icon(Icons.receipt_long_rounded, color: Color(0xFF64748B)),
               onPressed: () {
                 Navigator.push(
                   context,
@@ -276,8 +361,29 @@ class _SessionScreenState extends State<SessionScreen>
                 );
               },
             ),
-          const SizedBox(width: 4),
+          const SizedBox(width: 8),
         ],
+        bottom: session != null && session.status == 'ACTIVE'
+            ? PreferredSize(
+                preferredSize: const Size.fromHeight(4),
+                child: TweenAnimationBuilder<double>(
+                  duration: const Duration(milliseconds: 400),
+                  curve: Curves.easeInOut,
+                  tween: Tween<double>(
+                    begin: 0,
+                    end: (_currentQuestionIndex + 1) / (session.questions.isEmpty ? 1 : session.questions.length),
+                  ),
+                  builder: (context, value, _) {
+                    return LinearProgressIndicator(
+                      value: value,
+                      backgroundColor: const Color(0xFFE2E8F0),
+                      valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+                      minHeight: 4,
+                    );
+                  },
+                ),
+              )
+            : null,
       ),
       body: Center(
         child: ConstrainedBox(
@@ -1254,6 +1360,11 @@ class _SessionScreenState extends State<SessionScreen>
       }
       _answerController.clear();
       setState(() => _liveTranscript = '');
+
+      final eval = provider.lastEvaluation;
+      if (eval != null) {
+        _triggerCelebration(eval.overallScore, eval.isPassed);
+      }
     } else if (mounted) {
       // Show error to user
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1289,213 +1400,289 @@ class _SessionScreenState extends State<SessionScreen>
     final eval = provider.lastEvaluation!;
     final isLast = _currentQuestionIndex >= session.questions.length - 1;
 
-    return Card(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: eval.isPassed ? AppTheme.successColor : AppTheme.warningColor,
-          width: 1.5,
+    return TweenAnimationBuilder<double>(
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeOutBack,
+      tween: Tween<double>(begin: 0.92, end: 1.0),
+      builder: (context, scale, child) {
+        return Transform.scale(
+          scale: scale,
+          child: child,
+        );
+      },
+      child: Card(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: eval.isPassed ? AppTheme.successColor : AppTheme.warningColor,
+            width: 1.5,
+          ),
         ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header
-            Row(
-              children: [
-                Icon(
-                  eval.isPassed
-                      ? Icons.check_circle_rounded
-                      : Icons.info_outline_rounded,
-                  color: eval.isPassed
-                      ? AppTheme.successColor
-                      : AppTheme.warningColor,
-                  size: 28,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    eval.isPassed ? 'Great Job! 🎉' : 'Keep Practicing! 💪',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: eval.isPassed
-                          ? AppTheme.successColor
-                          : AppTheme.warningColor,
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Celebration Badge
+              if (eval.isPassed) ...[
+                Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFEF3C7),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: const Color(0xFFFDE68A)),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('✨ ⭐ ', style: TextStyle(fontSize: 14)),
+                        Text(
+                          'إجابة رائعة ومميزة!',
+                          style: TextStyle(
+                            color: Color(0xFF92400E),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                        Text(' ⭐ ✨', style: TextStyle(fontSize: 14)),
+                      ],
                     ),
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
+                const SizedBox(height: 12),
+              ],
+
+              // Header
+              Row(
+                children: [
+                  Icon(
+                    eval.isPassed
+                        ? Icons.check_circle_rounded
+                        : Icons.info_outline_rounded,
+                    color: eval.isPassed
+                        ? AppTheme.successColor
+                        : AppTheme.warningColor,
+                    size: 30,
                   ),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          eval.isPassed ? 'ممتاز! إجابة رائعة 🎉' : 'محاولة جيدة! واصل التدريب 💪',
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                            color: eval.isPassed
+                                ? AppTheme.successColor
+                                : AppTheme.warningColor,
+                          ),
+                        ),
+                        Text(
+                          eval.isPassed ? 'Great Job!' : 'Keep Practicing!',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF64748B),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  child: Text(
-                    'Score: ${eval.overallScore.toStringAsFixed(0)}%',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.primaryColor,
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      'Score: ${eval.overallScore.toStringAsFixed(0)}%',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.primaryColor,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Score Breakdown (with pronunciation & fluency)
+              _buildScoreBreakdown(eval),
+              const SizedBox(height: 16),
+
+              // Corrected sentence with listen button
+              const Text(
+                '🌟 الصياغة الإنجليزية المثالية (Polished Expression):',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                  color: Color(0xFF334155),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Container(
+                padding: const EdgeInsets.all(12),
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: SavableText(
+                        eval.correctedSentence,
+                        onSaveWord: (word) =>
+                            _saveSelectedWord(word, eval.correctedSentence),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF0F172A),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // Listen to corrected version
+                    IconButton(
+                      icon: Icon(
+                        _isTtsSpeaking
+                            ? Icons.stop_circle
+                            : Icons.volume_up_rounded,
+                        color: AppTheme.primaryColor,
+                        size: 22,
+                      ),
+                      onPressed: () {
+                        if (_isTtsSpeaking) {
+                          _tts.stop();
+                        } else {
+                          _tts.speak(eval.correctedSentence);
+                        }
+                      },
+                      tooltip: 'Listen to correct pronunciation',
+                      constraints: const BoxConstraints(),
+                      padding: const EdgeInsets.all(4),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Explanation
+              SavableText(
+                eval.explanationMarkdown,
+                onSaveWord: (word) =>
+                    _saveSelectedWord(word, eval.explanationMarkdown),
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF475569),
+                  height: 1.5,
+                ),
+              ),
+
+              // Identified Errors
+              if (eval.identifiedErrors.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                const Divider(),
+                const SizedBox(height: 8),
+                const Text(
+                  '🔍 نقاط التحسين والتصويب (Tips & Corrections):',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    color: Color(0xFF334155),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                ...eval.identifiedErrors.map(
+                  (err) => Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(
+                          Icons.close,
+                          color: AppTheme.errorColor,
+                          size: 16,
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: SavableText(
+                            '"${err.wrongSnippet}" → "${err.correctSnippet}": ${err.explanation}',
+                            onSaveWord: (word) => _saveSelectedWord(
+                              word,
+                              '${err.correctSnippet}. ${err.explanation}',
+                            ),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF475569),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
               ],
-            ),
-            const SizedBox(height: 16),
+              const SizedBox(height: 20),
 
-            // Score Breakdown (with pronunciation & fluency)
-            _buildScoreBreakdown(eval),
-            const SizedBox(height: 16),
-
-            // Corrected sentence with listen button
-            const Text(
-              'Polished Expression:',
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-                color: Color(0xFF64748B),
-              ),
-            ),
-            const SizedBox(height: 4),
-            Container(
-              padding: const EdgeInsets.all(12),
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: const Color(0xFFF1F5F9),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: SavableText(
-                      eval.correctedSentence,
-                      onSaveWord: (word) =>
-                          _saveSelectedWord(word, eval.correctedSentence),
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF0F172A),
-                      ),
+              // Next / Finish Button (Full-width prominent button)
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: provider.isLoading
+                      ? null
+                      : () async {
+                          _tts.stop();
+                          provider.clearLearningSupport();
+                          if (isLast) {
+                            setState(() {
+                              _activeSupportAction = null;
+                              _currentQuestionIndex = 0;
+                              _liveTranscript = '';
+                              _answerController.clear();
+                            });
+                            await provider.finishSession();
+                          } else {
+                            final session = provider.currentSession;
+                            if (session != null) {
+                              await _showQuestion(
+                                session,
+                                _currentQuestionIndex + 1,
+                              );
+                            }
+                            // Clear last evaluation for fresh view
+                            provider.clearError();
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isLast ? const Color(0xFF10B981) : AppTheme.primaryColor,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  // Listen to corrected version
-                  IconButton(
-                    icon: Icon(
-                      _isTtsSpeaking
-                          ? Icons.stop_circle
-                          : Icons.volume_up_rounded,
-                      color: AppTheme.primaryColor,
-                      size: 22,
-                    ),
-                    onPressed: () {
-                      if (_isTtsSpeaking) {
-                        _tts.stop();
-                      } else {
-                        _tts.speak(eval.correctedSentence);
-                      }
-                    },
-                    tooltip: 'Listen to correct pronunciation',
-                    constraints: const BoxConstraints(),
-                    padding: const EdgeInsets.all(4),
+                  icon: Icon(
+                    isLast
+                        ? Icons.emoji_events_rounded
+                        : Icons.arrow_forward_rounded,
+                    size: 20,
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // Explanation
-            SavableText(
-              eval.explanationMarkdown,
-              onSaveWord: (word) =>
-                  _saveSelectedWord(word, eval.explanationMarkdown),
-              style: const TextStyle(
-                fontSize: 13,
-                color: Color(0xFF475569),
-                height: 1.4,
-              ),
-            ),
-
-            // Identified Errors
-            if (eval.identifiedErrors.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              const Divider(),
-              const SizedBox(height: 8),
-              ...eval.identifiedErrors.map(
-                (err) => Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Icon(
-                        Icons.close,
-                        color: AppTheme.errorColor,
-                        size: 16,
-                      ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: SavableText(
-                          '"${err.wrongSnippet}" → "${err.correctSnippet}": ${err.explanation}',
-                          onSaveWord: (word) => _saveSelectedWord(
-                            word,
-                            '${err.correctSnippet}. ${err.explanation}',
-                          ),
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFF475569),
-                          ),
-                        ),
-                      ),
-                    ],
+                  label: Text(
+                    isLast ? 'إنهاء الجلسة وحفظ النتيجة 🏆 (Finish)' : 'السؤال التالي (Next Question) ➔',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
             ],
-            const SizedBox(height: 16),
-
-            // Next / Finish Button
-            Align(
-              alignment: Alignment.centerRight,
-              child: ElevatedButton.icon(
-                onPressed: provider.isLoading
-                    ? null
-                    : () async {
-                        _tts.stop();
-                        provider.clearLearningSupport();
-                        if (isLast) {
-                          setState(() {
-                            _activeSupportAction = null;
-                            _currentQuestionIndex = 0;
-                            _liveTranscript = '';
-                            _answerController.clear();
-                          });
-                          await provider.finishSession();
-                        } else {
-                          final session = provider.currentSession;
-                          if (session != null) {
-                            await _showQuestion(
-                              session,
-                              _currentQuestionIndex + 1,
-                            );
-                          }
-                          // Clear last evaluation for fresh view
-                          provider.clearError();
-                        }
-                      },
-                icon: Icon(
-                  isLast
-                      ? Icons.check_circle_rounded
-                      : Icons.arrow_forward_rounded,
-                ),
-                label: Text(isLast ? 'Finish Session' : 'Next Question'),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -1504,13 +1691,13 @@ class _SessionScreenState extends State<SessionScreen>
   Widget _buildScoreBreakdown(dynamic eval) {
     return Row(
       children: [
-        _buildScoreChip('Grammar', eval.grammarScore, Icons.spellcheck),
+        _buildScoreChip('القواعد\nGrammar', eval.grammarScore, Icons.spellcheck),
         const SizedBox(width: 6),
-        _buildScoreChip('Vocab', eval.vocabularyScore, Icons.menu_book),
+        _buildScoreChip('المفردات\nVocab', eval.vocabularyScore, Icons.menu_book),
         const SizedBox(width: 6),
-        _buildScoreChip('Fluency', eval.fluencyScore, Icons.record_voice_over),
+        _buildScoreChip('الطلاقة\nFluency', eval.fluencyScore, Icons.record_voice_over),
         const SizedBox(width: 6),
-        _buildScoreChip('Pronun.', eval.pronunciationScore, Icons.hearing),
+        _buildScoreChip('النطق\nPronun.', eval.pronunciationScore, Icons.hearing),
       ],
     );
   }
@@ -1532,19 +1719,25 @@ class _SessionScreenState extends State<SessionScreen>
         ),
         child: Column(
           children: [
-            Icon(icon, size: 16, color: color),
-            const SizedBox(height: 4),
+            Icon(icon, color: color, size: 16),
+            const SizedBox(height: 2),
             Text(
               '${score.toStringAsFixed(0)}%',
               style: TextStyle(
-                fontSize: 14,
                 fontWeight: FontWeight.bold,
+                fontSize: 13,
                 color: color,
               ),
             ),
+            const SizedBox(height: 2),
             Text(
               label,
-              style: const TextStyle(fontSize: 10, color: Color(0xFF64748B)),
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 10,
+                color: Color(0xFF64748B),
+                height: 1.1,
+              ),
             ),
           ],
         ),

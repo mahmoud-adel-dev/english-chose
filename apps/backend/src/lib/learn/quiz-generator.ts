@@ -258,7 +258,7 @@ export function buildArabicGrammarCoach(
     case "b2-third-conditional-regrets":
       return {
         titleArabic: "الشرط الثالث والندم على الماضي",
-        explanationArabic: "نستخدم الشرط الثالث للتحدث عن موقف لم يحدث في الماضي وتخيّل نتيجة مختلفة له. الصيغة: If + had + V3, would have + V3. لا يمكن تغيير الحدث الماضي، لذلك يعبر التركيب عن الندم أو الافتراض المضاد للواقع.",
+        explanationArabic: "نستخدم الشرط الثالث للتحدث عن موقف لم يحدث في الماضي وتخيّل نتيجة مختلفة له مع استخدام التصريف الثالث (V3). الصيغة: If + had + V3, would have + V3. لا يمكن تغيير الحدث الماضي، لذلك يعبر التركيب عن الندم أو الافتراض المضاد للواقع.",
         verbFormsArabic: "If-clause: had + V3 | Result: would have + V3 | مثال: practice → practiced → practiced",
         examples: [
           { english: "If I had studied, I would have passed.", arabic: "لو كنت قد ذاكرت، لكنت نجحت." },

@@ -83,14 +83,17 @@ export async function POST(
       const aiResponse = await AiTaskRouter.executeCompletion(
         AiTaskType.ANSWER_EVALUATION,
         {
-          systemPrompt: `You are an expert Cambridge English CEFR examiner.
-Evaluate the learner's response strictly.
+          systemPrompt: `You are an expert Cambridge English CEFR examiner evaluating an Arabic-speaking student.
+Evaluate the learner's response strictly according to the CEFR framework.
 CRITICAL RULES:
 - If the response is nonsense, gibberish (e.g. repeated letters like 'jhhhh', random typing, repeated dots, or no actual English words), the score MUST BE 0.
 - If the response is off-topic or fails to answer the prompt, score between 0 and 20.
 - If the response is in English but has poor grammar/vocabulary, score between 20 and 50.
 - Score 50-70 for acceptable basic English matching A2/B1.
 - Score 70-100 for fluent, natural English with rich grammar and vocabulary.
+
+LANGUAGE REQUIREMENT:
+The "explanation" MUST be written in clear, encouraging, friendly Arabic (باللغة العربية الواضحة) explaining to the learner how well they answered and what they can improve.
 
 Return ONLY a valid JSON object:
 {
@@ -99,7 +102,7 @@ Return ONLY a valid JSON object:
   "grammarScore": number (0-100),
   "vocabularyScore": number (0-100),
   "fluencyScore": number (0-100),
-  "explanation": string
+  "explanation": string (in Arabic)
 }`,
           userPrompt: `Target Level: ${currentItem.targetLevel}
 Prompt: "${currentItem.promptText}"
@@ -215,7 +218,7 @@ Learner's Submitted Answer: "${transcript}"`,
         data: {
           status: "COMPLETED",
           assessedLevel: determinedLevel,
-          overallFeedback: `Congratulations! Based on your responses, your assessed level is ${determinedLevel}.`,
+          overallFeedback: `تهانينا! بناءً على إجاباتك تم تحديد مستواك المعتمد في الإنجليزية عند المستوى (${determinedLevel}).`,
           completedAt,
         },
       });
@@ -242,7 +245,7 @@ Learner's Submitted Answer: "${transcript}"`,
           vocabulary: vocabularyScore,
           fluency: fluencyScore,
         },
-        studyPlanSummary: `You are placed at ${determinedLevel}. Focus on complex sentence connectors and professional vocabulary to advance to the next level.`,
+        studyPlanSummary: `تم تصنيفك في المستوى (${determinedLevel}). خطتك التدريبية: ركّز على ربط الجمل المعقدة وإثراء حصيلتك من المفردات اليومية والمهنية لتصل إلى المستوى التالي بثقة وسلاسة.`,
         completedAt: completedAt.toISOString(),
       };
 
