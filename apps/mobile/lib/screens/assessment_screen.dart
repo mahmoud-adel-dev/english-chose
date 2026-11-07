@@ -248,7 +248,7 @@ class _AssessmentScreenState extends State<AssessmentScreen>
             ),
             const SizedBox(height: 12),
             const Text(
-              'Take a 6-question adaptive assessment to accurately diagnose your English speaking, listening, and grammar proficiency (A1 to C2).',
+              'Take a 6-question adaptive diagnostic of your English responses (grammar, vocabulary, coherence, and relevance). If you use the microphone, only the transcript is evaluated; pronunciation and listening are not scored in this test.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 14,
@@ -263,8 +263,8 @@ class _AssessmentScreenState extends State<AssessmentScreen>
               spacing: 8,
               runSpacing: 8,
               children: [
-                _buildBadge(Icons.volume_up, 'Listen to Prompts'),
-                _buildBadge(Icons.mic, 'Speak Your Answers'),
+                _buildBadge(Icons.volume_up, 'Hear the Prompt'),
+                _buildBadge(Icons.mic, 'Voice or Text Answer'),
                 _buildBadge(Icons.auto_awesome, 'Instant Diagnosis'),
               ],
             ),
@@ -835,7 +835,7 @@ class _AssessmentScreenState extends State<AssessmentScreen>
             ),
             const SizedBox(height: 16),
             Text(
-              'المستوى المعتمد: Level ${result.assessedLevel}',
+              'المستوى التقديري: Level ${result.assessedLevel}',
               style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -843,6 +843,16 @@ class _AssessmentScreenState extends State<AssessmentScreen>
               ),
             ),
             const SizedBox(height: 6),
+            const Text(
+              'هذه نتيجة تشخيصية أولية وليست شهادة CEFR رسمية. الاختبار الحالي يقيس الإجابات النصية ولا يمنح درجة مستقلة للنطق أو الاستماع.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 12,
+                color: Color(0xFF64748B),
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 10),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
               decoration: BoxDecoration(

@@ -11,6 +11,7 @@ import {
   validateEnglishAnswer,
 } from "@/lib/assessment/answer-policy";
 import { calculateNextDailyStreak } from "@/lib/learning/daily-streak";
+import { normalizeAssessmentEvaluation } from "@/lib/assessment/evaluation-policy";
 
 type AssessmentSubmitOutcome =
   | { kind: "NEXT"; item: AssessmentItemDto }
@@ -92,24 +93,30 @@ export async function POST(
       const aiResponse = await AiTaskRouter.executeCompletion(
         AiTaskType.ANSWER_EVALUATION,
         {
-          systemPrompt: `You are an expert Cambridge English CEFR examiner evaluating an Arabic-speaking learner from a text transcript.
-Evaluate only the English language demonstrated in the submitted words: relevance, grammar, vocabulary, coherence, and linguistic fluency. Do not claim to measure pronunciation, accent, intonation, or phoneme accuracy because no audio is supplied to this evaluator.
+          systemPrompt: `You are a strict, fair CEFR English-language examiner assessing a learner response to a specific prompt. Evaluate the language the learner actually demonstrated, not what you think they intended to say.
 
-Scoring guidance:
-- Nonsense, gibberish, or no meaningful English words: overall score 0.
-- Off-topic or fails to answer the prompt: overall score 0–20.
-- English with weak grammar and vocabulary: overall score 20–50.
-- Acceptable basic English appropriate to A2/B1: overall score 50–70.
-- Fluent, relevant English with varied grammar and vocabulary: overall score 70–100.
+First judge whether the response is meaningful English and whether it genuinely addresses the prompt. Do not reward a response merely because it is long, contains English words, or is grammatically plausible. A fluent but unrelated answer is off-topic and must receive a low overall score. Do not confuse a debatable opinion or a minor factual mistake with an off-topic response: assess language ability, not the learner's beliefs or general knowledge.
 
-Write the explanation in clear, encouraging Arabic. Return ONLY a valid JSON object:
+Scoring rules:
+- If there is no meaningful English, gibberish, or the answer does not communicate an interpretable message: isMeaningfulEnglish=false and overallScore 0-10.
+- If the response does not address the prompt, or relevanceScore is below 40: isOnTopic=false and overallScore 0-20.
+- If it only partially addresses the prompt (relevanceScore 40-59): overallScore cannot exceed 45.
+- If it addresses the prompt only weakly (relevanceScore 60-74): overallScore cannot exceed 64.
+- Never assign a high score based on word count alone. Assess grammar control, vocabulary range and precision, coherence, and ability to express the required meaning at the stated target level.
+- A response with basic vocabulary and simple sentence patterns must not receive a B2/C1-level score merely because it is understandable.
+- Use the target level as the benchmark. Score consistently and conservatively; do not inflate scores to encourage the learner.
+- No audio is supplied. Do not score pronunciation, accent, intonation, or phoneme accuracy.
+
+Return ONLY a valid JSON object with every field below. Boolean fields are mandatory:
 {
-  "isMeaningAccurate": boolean,
+  "isOnTopic": boolean,
+  "isMeaningfulEnglish": boolean,
+  "relevanceScore": number (0-100),
   "overallScore": number (0-100),
   "grammarScore": number (0-100),
   "vocabularyScore": number (0-100),
   "fluencyScore": number (0-100),
-  "explanation": string (in Arabic)
+  "explanation": string (clear, encouraging Arabic)
 }`,
           userPrompt: `Target Level: ${currentItem.targetLevel}
 Prompt: "${currentItem.promptText}"
@@ -131,26 +138,21 @@ Learner's Submitted Answer: "${transcript}"`,
         if (match) parsed = JSON.parse(match[0]);
       }
 
-      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-        throw new Error("AI assessment returned an invalid payload.");
+      const normalizedEvaluation = normalizeAssessmentEvaluation(parsed);
+      if (!normalizedEvaluation) {
+        throw new Error("AI assessment returned an incomplete or invalid evaluation payload.");
       }
 
-      evalScore = normalizeScore(parsed.overallScore ?? parsed.scores?.overall);
-      if (evalScore === null) {
-        throw new Error("AI assessment returned an invalid overall score.");
-      }
-
+      evalScore = normalizedEvaluation.overallScore;
       feedbackJson = {
-        isMeaningAccurate: parsed.isMeaningAccurate === true,
-        overallScore: evalScore,
-        grammarScore: normalizeScore(parsed.grammarScore ?? parsed.scores?.grammar) ?? evalScore,
-        vocabularyScore: normalizeScore(parsed.vocabularyScore ?? parsed.scores?.vocabulary) ?? evalScore,
-        fluencyScore: normalizeScore(parsed.fluencyScore ?? parsed.scores?.fluency) ?? evalScore,
-        explanation:
-          typeof parsed.explanation === "string" && parsed.explanation.trim()
-            ? parsed.explanation.trim().slice(0, 12_000)
-            : "إجابتك تم تقييمها. راجع مستواك والملاحظات وحاول تطبيقها في التدريب القادم.",
+        ...normalizedEvaluation,
+        evaluatorModel: aiResponse.modelIdentifier,
       };
+      if (normalizedEvaluation.scoreCapReason) {
+        console.warn(
+          `[CEFR] Applied score cap ${normalizedEvaluation.scoreCapReason} for assessment item ${currentItem.id}`
+        );
+      }
     } catch (error) {
       console.warn("AI assessment evaluation unavailable:", error);
       return errorResponse(

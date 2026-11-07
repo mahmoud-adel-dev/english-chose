@@ -7,6 +7,7 @@ import {
   validateEnglishAnswer,
 } from "../src/lib/assessment/answer-policy";
 import { allowsMockFallback, isMockAdapterEnabled } from "../src/lib/ai/task-router";
+import { normalizeAssessmentEvaluation } from "../src/lib/assessment/evaluation-policy";
 import { AiTaskType } from "@prisma/client";
 
 describe("English answer policy", () => {
@@ -126,3 +127,69 @@ describe("English answer policy", () => {
     expect(isMockAdapterEnabled(AiTaskType.QUESTION_GENERATION, "development", "true")).toBe(true);
   });
 });
+
+describe("CEFR AI evaluation integrity", () => {
+  const baseEvaluation = {
+    isOnTopic: true,
+    isMeaningfulEnglish: true,
+    relevanceScore: 90,
+    overallScore: 88,
+    grammarScore: 86,
+    vocabularyScore: 90,
+    fluencyScore: 88,
+    explanation: "إجابة واضحة ومرتبطة بالسؤال.",
+  };
+
+  it("rejects an evaluator payload that omits mandatory relevance flags", () => {
+    const { isOnTopic: _isOnTopic, ...incomplete } = baseEvaluation;
+    expect(normalizeAssessmentEvaluation(incomplete)).toBeNull();
+  });
+
+  it("caps a fluent but off-topic answer at 20", () => {
+    const result = normalizeAssessmentEvaluation({
+      ...baseEvaluation,
+      isOnTopic: false,
+      relevanceScore: 15,
+      overallScore: 94,
+    });
+    expect(result).toMatchObject({ overallScore: 20, scoreCapReason: "OFF_TOPIC" });
+  });
+
+  it("caps non-meaningful English at 10", () => {
+    const result = normalizeAssessmentEvaluation({
+      ...baseEvaluation,
+      isMeaningfulEnglish: false,
+      overallScore: 92,
+    });
+    expect(result).toMatchObject({ overallScore: 10, scoreCapReason: "NOT_MEANINGFUL_ENGLISH" });
+  });
+
+  it("caps partial relevance and inconsistent component scores", () => {
+    const partial = normalizeAssessmentEvaluation({
+      ...baseEvaluation,
+      relevanceScore: 55,
+      overallScore: 90,
+    });
+    expect(partial?.overallScore).toBeLessThanOrEqual(45);
+
+    const inconsistent = normalizeAssessmentEvaluation({
+      ...baseEvaluation,
+      relevanceScore: 90,
+      overallScore: 95,
+      grammarScore: 20,
+      vocabularyScore: 20,
+      fluencyScore: 20,
+    });
+    expect(inconsistent?.overallScore).toBe(30);
+    expect(inconsistent?.scoreCapReason).toBe("INCONSISTENT_COMPONENT_SCORES");
+  });
+
+  it("documents why the old mock score produced B2 regardless of answer quality", () => {
+    const levels = ["B1", "B2", "C1", "C2", "C2", "C2"] as const;
+    const oldMockPlacement = determineAssessedLevel(
+      levels.map((targetLevel) => ({ targetLevel, score: 82 }))
+    );
+    expect(oldMockPlacement).toMatchObject({ level: "B2", averageScore: 82 });
+  });
+});
+
