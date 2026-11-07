@@ -198,7 +198,8 @@ export const AiTaskTypeEnum = z.enum([
   "PROGRESS_SUMMARY",
   "SPEECH_TO_TEXT",
   "TEXT_TO_SPEECH",
-  "PRONUNCIATION_ASSESSMENT"
+  "PRONUNCIATION_ASSESSMENT",
+  "CONVERSATION_CHAT"
 ]);
 export type AiTaskType = z.infer<typeof AiTaskTypeEnum>;
 
@@ -222,4 +223,55 @@ export interface AdminUsageAnalyticsDto {
   actualCostUsd: number | null;
   avgLatencyMs: number;
   errorCount: number;
+}
+
+// ============================================================================
+// 8. Real-Time AI Conversation & Self-Development Coach
+// ============================================================================
+
+export interface ConversationMessageDto {
+  id: string;
+  sessionId: string;
+  role: "user" | "assistant";
+  content: string;
+  audioUrl?: string | null;
+  correctionTip?: string | null;
+  createdAt: string;
+}
+
+export interface ConversationMistakeDto {
+  wrongSnippet: string;
+  correctSnippet: string;
+  explanation: string;
+}
+
+export interface ConversationEvaluationReportDto {
+  overallScore: number;
+  assessedLevel: CefrLevel;
+  grammarScore: number;
+  vocabularyScore: number;
+  fluencyScore: number;
+  pronunciationScore: number;
+  summaryArabic: string;
+  strengthsArabic: string[];
+  areasForImprovementArabic: string[];
+  allMistakes: ConversationMistakeDto[];
+}
+
+export interface ConversationSessionDto {
+  id: string;
+  userId: string;
+  targetLevel: CefrLevel;
+  status: "ACTIVE" | "COMPLETED";
+  topic?: string | null;
+  overallScore?: number | null;
+  assessedLevel?: CefrLevel | null;
+  grammarScore?: number | null;
+  vocabularyScore?: number | null;
+  fluencyScore?: number | null;
+  pronunciationScore?: number | null;
+  evaluationReport?: ConversationEvaluationReportDto | null;
+  createdAt: string;
+  completedAt?: string | null;
+  messages?: ConversationMessageDto[];
 }

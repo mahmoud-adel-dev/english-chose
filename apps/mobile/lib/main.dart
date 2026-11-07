@@ -9,6 +9,7 @@ import 'screens/assessment_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/saved_words_screen.dart';
 import 'screens/learn/learn_hub_screen.dart';
+import 'screens/conversation/conversation_coach_screen.dart';
 import 'screens/admin/admin_dashboard_screen.dart';
 
 void main() {
@@ -99,11 +100,23 @@ class MainNavigationScaffold extends StatefulWidget {
 class _MainNavigationScaffoldState extends State<MainNavigationScaffold> {
   int _currentIndex = 0;
   bool _showingAssessment = false;
+  bool _showingConversation = false;
 
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
     final bool isAdmin = provider.isAdmin;
+
+    if (_showingConversation) {
+      return ConversationCoachScreen(
+        onBackToHome: () {
+          setState(() {
+            _showingConversation = false;
+            _currentIndex = 0;
+          });
+        },
+      );
+    }
 
     if (_showingAssessment) {
       return AssessmentScreen(
@@ -126,6 +139,11 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> {
         onStartAssessment: () {
           setState(() {
             _showingAssessment = true;
+          });
+        },
+        onStartConversation: () {
+          setState(() {
+            _showingConversation = true;
           });
         },
         onOpenAdmin: isAdmin

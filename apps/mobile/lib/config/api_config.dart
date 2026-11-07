@@ -52,6 +52,15 @@ class ApiConfig {
       category != null ? '$baseUrl/learn/tips?category=$category' : '$baseUrl/learn/tips';
   static const String learnExplain = '$baseUrl/learn/explain';
 
+  // Real-Time AI Conversation Coach & Self-Development
+  static const String conversationStart = '$baseUrl/conversations/start';
+  static const String conversationCurrent = '$baseUrl/conversations/current';
+  static String conversationMessages(String sessionId) =>
+      '$baseUrl/conversations/$sessionId/messages';
+  static String conversationFinish(String sessionId) =>
+      '$baseUrl/conversations/$sessionId/finish';
+  static const String conversations = '$baseUrl/conversations';
+
   // Admin & Governance Endpoints
   static const String adminAnalytics = '$baseUrl/admin/analytics';
   static const String adminProviders = '$baseUrl/admin/providers';

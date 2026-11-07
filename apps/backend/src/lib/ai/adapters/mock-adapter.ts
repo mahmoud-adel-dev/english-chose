@@ -88,6 +88,70 @@ export class MockAiProviderAdapter implements IAiProviderAdapter {
       };
     }
 
+    // Check if the request is for Real-Time Conversation Chat
+    if (promptLower.includes("conversation") || promptLower.includes("chat partner") || promptLower.includes("coach alex")) {
+      const isEvaluation = promptLower.includes("diagnostic report") || promptLower.includes("evaluate the entire conversation");
+
+      if (isEvaluation) {
+        const fullReport = {
+          overallScore: 84.5,
+          assessedLevel: "B1",
+          grammarScore: 82.0,
+          vocabularyScore: 85.0,
+          fluencyScore: 88.0,
+          pronunciationScore: 83.0,
+          summaryArabic: "أداء محادثة متميز ومبشر! أظهرت قدرة عالية على التعبير عن أفكارك والمشاركة في حوار تفاعلي مستمر مع ترابط أفكار جيد ومفردات ملائمة للمستوى المتوسط.",
+          strengthsArabic: [
+            "المبادرة في الحديث واستخدام جمل مركبة ومفهومة.",
+            "سرعة التجاوب والقدرة على شرح التفاصيل الشخصية بثقة.",
+            "استخدام مفردات متنوعة تخدم سياق الحوار بشكل طبيعي.",
+          ],
+          areasForImprovementArabic: [
+            "الانتباه لتوافق الأزمنة (الماضي البسيط والماضي المستمر).",
+            "استخدام حروف الجر الملازمة للأفعال (prepositional verbs).",
+            "تنويع أدوات الربط المعقدة مثل (although, whereas, as a result).",
+          ],
+          allMistakes: [
+            {
+              wrongSnippet: "I go to store yesterday",
+              correctSnippet: "I went to the store yesterday",
+              explanation: "في الإنجليزية نستخدم التصريف الثاني (went) عند التحدث عن حدث اكتمل في الماضي (yesterday).",
+            },
+            {
+              wrongSnippet: "She don't like coffee",
+              correctSnippet: "She doesn't like coffee",
+              explanation: "مع الضمائر المفردة الغائبة (He/She/It) نستخدم doesn't في النفي وليس don't.",
+            },
+          ],
+        };
+
+        return {
+          content: JSON.stringify(fullReport),
+          parsedJson: fullReport,
+          promptTokens: 250,
+          completionTokens: 180,
+          latencyMs: Date.now() - startTime + 15,
+          modelIdentifier: model,
+        };
+      }
+
+      // Single conversation turn reply
+      const conversationReply = {
+        reply: "That's a very interesting thought! Practicing spoken English every day builds massive confidence. What is your favorite hobby or activity when you want to relax after a busy day?",
+        correctionTip: "💡 Coach Tip: Remember to use 'interested in' when talking about hobbies (e.g., 'I am interested in reading').",
+        detectedErrors: [],
+      };
+
+      return {
+        content: JSON.stringify(conversationReply),
+        parsedJson: conversationReply,
+        promptTokens: 150,
+        completionTokens: 90,
+        latencyMs: Date.now() - startTime + 10,
+        modelIdentifier: model,
+      };
+    }
+
     // Default question generation mock - returns 5 tailored questions according to CEFR level
     const cefrMatch = (req.systemPrompt + " " + req.userPrompt).match(/\b(A1|A2|B1|B2|C1|C2)\b/i);
     const detectedLevel = cefrMatch ? cefrMatch[1].toUpperCase() : "A2";

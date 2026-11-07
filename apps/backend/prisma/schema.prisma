@@ -42,6 +42,7 @@ enum AiTaskType {
   SPEECH_TO_TEXT
   TEXT_TO_SPEECH
   PRONUNCIATION_ASSESSMENT
+  CONVERSATION_CHAT
 }
 
 enum ProviderStatus {
@@ -72,6 +73,7 @@ model User {
   profile     LearningProfile?
   assessments CefrAssessment[]
   sessions    DailySession[]
+  conversations ConversationSession[]
   quotaUsage  UserQuotaUsage[]
   auditLogs   AuditLog[]
   savedWords  SavedWord[]
@@ -380,4 +382,43 @@ model AuditLog {
   createdAt   DateTime @default(now())
 
   @@index([action, createdAt])
+}
+
+// -------------------------------------------------------------
+// REAL-TIME AI CONVERSATION & SELF-DEVELOPMENT
+// -------------------------------------------------------------
+
+model ConversationSession {
+  id                 String                @id @default(uuid())
+  userId             String
+  user               User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  targetLevel        CefrLevel             @default(B1)
+  status             String                @default("ACTIVE") // ACTIVE, COMPLETED
+  topic              String?
+  overallScore       Float?
+  assessedLevel      CefrLevel?
+  grammarScore       Float?
+  vocabularyScore    Float?
+  fluencyScore       Float?
+  pronunciationScore Float?
+  evaluationReport   Json?
+  createdAt          DateTime              @default(now())
+  completedAt        DateTime?
+
+  messages           ConversationMessage[]
+
+  @@index([userId, createdAt])
+}
+
+model ConversationMessage {
+  id            String              @id @default(uuid())
+  sessionId     String
+  session       ConversationSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role          String              // "user" or "assistant"
+  content       String              @db.Text
+  audioUrl      String?
+  correctionTip String?             @db.Text
+  createdAt     DateTime            @default(now())
+
+  @@index([sessionId, createdAt])
 }

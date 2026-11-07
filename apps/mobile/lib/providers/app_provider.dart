@@ -5,6 +5,7 @@ import '../models/session.dart';
 import '../models/evaluation.dart';
 import '../models/assessment.dart';
 import '../models/learn.dart';
+import '../models/conversation.dart';
 import '../services/api_service.dart';
 import '../services/google_sign_in_service.dart';
 
@@ -28,6 +29,12 @@ class AppProvider with ChangeNotifier {
   bool _isLearnLoading = false;
   bool _hasFetchedGrammar = false;
   bool _hasFetchedTips = false;
+
+  // Real-Time Conversation Coach state
+  ConversationSessionModel? _currentConversation;
+  ConversationEvaluationReportModel? _lastConversationReport;
+  bool _isConversationLoading = false;
+  bool _isConversationSending = false;
 
   // Admin states
   Map<String, dynamic>? _adminAnalytics;
@@ -78,6 +85,13 @@ class AppProvider with ChangeNotifier {
   List<LearningTipModel> get learningTips => _learningTips;
   QuizModel? get activeQuiz => _activeQuiz;
   bool get isLearnLoading => _isLearnLoading;
+
+  // Real-Time Conversation Coach getters
+  ConversationSessionModel? get currentConversation => _currentConversation;
+  ConversationEvaluationReportModel? get lastConversationReport =>
+      _lastConversationReport;
+  bool get isConversationLoading => _isConversationLoading;
+  bool get isConversationSending => _isConversationSending;
 
   void clearError() {
     _errorMessage = null;
@@ -865,5 +879,127 @@ class AppProvider with ChangeNotifier {
       notifyListeners();
       return null;
     }
+  }
+
+  // --- REAL-TIME AI CONVERSATION COACH ---
+
+  Future<bool> startOrResumeConversation({
+    String? targetLevel,
+    String? topic,
+  }) async {
+    _isConversationLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      final Map<String, dynamic> body = {};
+      if (targetLevel != null) body['targetLevel'] = targetLevel;
+      if (topic != null) body['topic'] = topic;
+
+      final res = await ApiService.post(
+        ApiConfig.conversationStart,
+        body: body,
+      );
+      _currentConversation =
+          ConversationSessionModel.fromJson(res as Map<String, dynamic>);
+      _lastConversationReport = null;
+      _isConversationLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _isConversationLoading = false;
+      _errorMessage = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> sendConversationMessage(
+    String content, {
+    String? audioUrl,
+  }) async {
+    if (_currentConversation == null) return false;
+    _isConversationSending = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final Map<String, dynamic> body = {'content': content};
+      if (audioUrl != null) body['audioUrl'] = audioUrl;
+
+      final res = await ApiService.post(
+        ApiConfig.conversationMessages(_currentConversation!.id),
+        body: body,
+      );
+
+      final assistantJson = res['assistantMessage'] as Map<String, dynamic>;
+      final userJson = res['userMessage'] as Map<String, dynamic>;
+
+      final userMsg = ConversationMessageModel.fromJson(userJson);
+      final assistantMsg = ConversationMessageModel.fromJson(assistantJson);
+
+      final updatedMessages =
+          List<ConversationMessageModel>.from(_currentConversation!.messages)
+            ..add(userMsg)
+            ..add(assistantMsg);
+
+      _currentConversation = ConversationSessionModel(
+        id: _currentConversation!.id,
+        userId: _currentConversation!.userId,
+        targetLevel: _currentConversation!.targetLevel,
+        status: _currentConversation!.status,
+        topic: _currentConversation!.topic,
+        overallScore: _currentConversation!.overallScore,
+        assessedLevel: _currentConversation!.assessedLevel,
+        grammarScore: _currentConversation!.grammarScore,
+        vocabularyScore: _currentConversation!.vocabularyScore,
+        fluencyScore: _currentConversation!.fluencyScore,
+        pronunciationScore: _currentConversation!.pronunciationScore,
+        evaluationReport: _currentConversation!.evaluationReport,
+        createdAt: _currentConversation!.createdAt,
+        completedAt: _currentConversation!.completedAt,
+        messages: updatedMessages,
+      );
+
+      _isConversationSending = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _isConversationSending = false;
+      _errorMessage = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<ConversationEvaluationReportModel?> finishConversationSession() async {
+    if (_currentConversation == null) return null;
+    _isConversationLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final res = await ApiService.post(
+        ApiConfig.conversationFinish(_currentConversation!.id),
+        body: {},
+      );
+
+      final updated =
+          ConversationSessionModel.fromJson(res as Map<String, dynamic>);
+      _currentConversation = updated;
+      _lastConversationReport = updated.evaluationReport;
+      _isConversationLoading = false;
+      notifyListeners();
+      return _lastConversationReport;
+    } catch (e) {
+      _isConversationLoading = false;
+      _errorMessage = e.toString();
+      notifyListeners();
+      return null;
+    }
+  }
+
+  void clearConversationReport() {
+    _lastConversationReport = null;
+    notifyListeners();
   }
 }
