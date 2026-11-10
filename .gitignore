@@ -46,3 +46,12 @@ apps/mobile/.flutter-plugins
 apps/mobile/.flutter-plugins-dependencies
 .neon
 *.ps1
+
+# Private mobile signing files (never publish)
+*.jks
+*.keystore
+**/key.properties
+**/local.properties
+*.tsbuildinfo
+.cxx/
+.gradle/

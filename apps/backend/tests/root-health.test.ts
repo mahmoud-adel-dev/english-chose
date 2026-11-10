@@ -6,9 +6,9 @@ vi.mock("@/lib/prisma", () => ({
   },
 }));
 
-describe("Root health endpoint", () => {
-  it("returns the API health response from the homepage", async () => {
-    const { GET } = await import("../src/app/route");
+describe("Health endpoint", () => {
+  it("keeps the API health response at /api/health", async () => {
+    const { GET } = await import("../src/app/api/health/route");
 
     const response = await GET();
 

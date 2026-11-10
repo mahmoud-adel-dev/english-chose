@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'config/theme.dart';
+import 'widgets/coach_illustration.dart';
 import 'providers/app_provider.dart';
 import 'screens/auth_screen.dart';
 import 'screens/home_screen.dart';
@@ -49,18 +50,7 @@ class MainGate extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.school_rounded,
-                  size: 56,
-                  color: AppTheme.primaryColor,
-                ),
-              ),
+              const CoachIllustration(size: 185),
               const SizedBox(height: 24),
               const Text(
                 'English Coach AI',
@@ -131,6 +121,8 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> {
 
     final pages = [
       HomeScreen(
+        onOpenLearn: () => setState(() => _currentIndex = 2),
+        onOpenWords: () => setState(() => _currentIndex = 3),
         onStartPractice: () {
           setState(() {
             _currentIndex = 1;
@@ -177,7 +169,9 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> {
                     Container(
                       decoration: const BoxDecoration(
                         color: Colors.white,
-                        border: Border(right: BorderSide(color: Color(0xFFE2E8F0))),
+                        border: Border(
+                          right: BorderSide(color: AppTheme.borderColor),
+                        ),
                       ),
                       child: SafeArea(
                         child: NavigationRail(
@@ -187,24 +181,46 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> {
                           selectedIndex: _currentIndex,
                           groupAlignment: -0.88,
                           backgroundColor: Colors.white,
-                          labelType: extendRail ? NavigationRailLabelType.none : NavigationRailLabelType.all,
-                          selectedIconTheme: const IconThemeData(color: AppTheme.primaryColor, size: 23),
-                          unselectedIconTheme: const IconThemeData(color: Color(0xFF94A3B8), size: 22),
-                          selectedLabelTextStyle: const TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.w800, fontSize: 11),
-                          unselectedLabelTextStyle: const TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.w600, fontSize: 10),
+                          labelType: extendRail
+                              ? NavigationRailLabelType.none
+                              : NavigationRailLabelType.all,
+                          selectedIconTheme: const IconThemeData(
+                            color: AppTheme.primaryColor,
+                            size: 23,
+                          ),
+                          unselectedIconTheme: const IconThemeData(
+                            color: Color(0xFF94A3B8),
+                            size: 22,
+                          ),
+                          selectedLabelTextStyle: const TextStyle(
+                            color: AppTheme.primaryColor,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 11,
+                          ),
+                          unselectedLabelTextStyle: const TextStyle(
+                            color: Color(0xFF64748B),
+                            fontWeight: FontWeight.w600,
+                            fontSize: 10,
+                          ),
                           leading: Padding(
                             padding: const EdgeInsets.only(top: 12, bottom: 20),
                             child: Container(
                               width: 42,
                               height: 42,
                               decoration: BoxDecoration(
-                                color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                                color: AppTheme.primaryColor.withValues(
+                                  alpha: 0.1,
+                                ),
                                 borderRadius: BorderRadius.circular(13),
                               ),
-                              child: const Icon(Icons.school_rounded, color: AppTheme.primaryColor),
+                              child: const Icon(
+                                Icons.school_rounded,
+                                color: AppTheme.primaryColor,
+                              ),
                             ),
                           ),
-                          onDestinationSelected: (index) => setState(() => _currentIndex = index),
+                          onDestinationSelected: (index) =>
+                              setState(() => _currentIndex = index),
                           destinations: [
                             const NavigationRailDestination(
                               icon: Icon(Icons.dashboard_outlined),
@@ -234,7 +250,9 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> {
                             if (isAdmin)
                               const NavigationRailDestination(
                                 icon: Icon(Icons.admin_panel_settings_outlined),
-                                selectedIcon: Icon(Icons.admin_panel_settings_rounded),
+                                selectedIcon: Icon(
+                                  Icons.admin_panel_settings_rounded,
+                                ),
                                 label: Text('Admin Panel'),
                               ),
                           ],
@@ -244,7 +262,10 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> {
                     Expanded(
                       child: SafeArea(
                         top: false,
-                        child: IndexedStack(index: _currentIndex, children: pages),
+                        child: IndexedStack(
+                          index: _currentIndex,
+                          children: pages,
+                        ),
                       ),
                     ),
                   ],
@@ -256,7 +277,9 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> {
                   top: false,
                   child: Container(
                     decoration: const BoxDecoration(
-                      border: Border(top: BorderSide(color: Color(0xFFE2E8F0), width: 1)),
+                      border: Border(
+                        top: BorderSide(color: AppTheme.borderColor, width: 1),
+                      ),
                     ),
                     child: BottomNavigationBar(
                       currentIndex: _currentIndex,
@@ -265,8 +288,14 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> {
                       backgroundColor: Colors.white,
                       selectedItemColor: AppTheme.primaryColor,
                       unselectedItemColor: const Color(0xFF94A3B8),
-                      selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 11),
-                      unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 10),
+                      selectedLabelStyle: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 11,
+                      ),
+                      unselectedLabelStyle: const TextStyle(
+                        fontWeight: FontWeight.w500,
+                        fontSize: 10,
+                      ),
                       elevation: 0,
                       items: [
                         const BottomNavigationBarItem(
@@ -297,7 +326,9 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> {
                         if (isAdmin)
                           const BottomNavigationBarItem(
                             icon: Icon(Icons.admin_panel_settings_outlined),
-                            activeIcon: Icon(Icons.admin_panel_settings_rounded),
+                            activeIcon: Icon(
+                              Icons.admin_panel_settings_rounded,
+                            ),
                             label: 'Admin',
                           ),
                       ],

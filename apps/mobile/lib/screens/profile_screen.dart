@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../config/theme.dart';
 import '../providers/app_provider.dart';
 import '../widgets/level_badge.dart';
+import '../widgets/learning_banner.dart';
 import 'logs_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -41,6 +42,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                const LearningBanner(
+                  title: 'Look how far you’re growing.',
+                  subtitle: 'تقدمك الحقيقي، خطوة بخطوة. كل محاولة بتفرق.',
+                ),
+                const SizedBox(height: 20),
                 // User Details Card
                 Card(
                   child: Padding(
@@ -73,7 +79,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 style: const TextStyle(
                                   fontSize: 20,
                                   fontWeight: FontWeight.bold,
-                                  color: Color(0xFF0F172A),
+                                  color: Color(0xFF252B4A),
                                 ),
                               ),
                               const SizedBox(height: 4),
@@ -81,7 +87,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 user.email,
                                 style: const TextStyle(
                                   fontSize: 14,
-                                  color: Color(0xFF64748B),
+                                  color: Color(0xFF73788E),
                                 ),
                               ),
                               const SizedBox(height: 8),
@@ -124,7 +130,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF0F172A),
+                            color: Color(0xFF252B4A),
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -137,7 +143,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 const Text(
                                   'Current Level',
                                   style: TextStyle(
-                                    color: Color(0xFF64748B),
+                                    color: Color(0xFF73788E),
                                     fontSize: 12,
                                   ),
                                 ),
@@ -158,7 +164,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 const Text(
                                   'Target Level',
                                   style: TextStyle(
-                                    color: Color(0xFF64748B),
+                                    color: Color(0xFF73788E),
                                     fontSize: 12,
                                   ),
                                 ),
@@ -189,7 +195,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF0F172A),
+                            color: Color(0xFF252B4A),
                           ),
                         ),
                         const SizedBox(height: 20),
@@ -255,7 +261,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         'View all API requests, responses, and network errors live.',
                         style: TextStyle(
                           fontSize: 12,
-                          color: Color(0xFF64748B),
+                          color: Color(0xFF73788E),
                         ),
                       ),
                       trailing: const Icon(
@@ -323,7 +329,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 14,
-                color: isAssessed ? color : const Color(0xFF64748B),
+                color: isAssessed ? color : const Color(0xFF73788E),
               ),
             ),
           ],

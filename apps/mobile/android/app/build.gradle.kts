@@ -45,6 +45,12 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        // Keep plugin native libraries aligned with the Flutter release targets.
+        // JNI hooks can otherwise contribute x86 libraries without a matching
+        // Flutter engine, making the APK appear installable on unsupported CPUs.
+        ndk {
+            abiFilters += setOf("armeabi-v7a", "arm64-v8a")
+        }
     }
 
     signingConfigs {

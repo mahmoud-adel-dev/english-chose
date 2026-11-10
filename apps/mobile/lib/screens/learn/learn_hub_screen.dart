@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../config/theme.dart';
+import '../../widgets/coach_illustration.dart';
 import '../../models/learn.dart';
 import '../../providers/app_provider.dart';
 import '../../services/tts_service.dart';
@@ -61,56 +62,39 @@ class _LearnHubScreenState extends State<LearnHubScreen>
     final provider = context.watch<AppProvider>();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
-        toolbarHeight: 82,
-        backgroundColor: const Color(0xFF312E81),
-        foregroundColor: Colors.white,
+        toolbarHeight: 104,
+        backgroundColor: AppTheme.backgroundColor,
+        foregroundColor: AppTheme.inkColor,
         elevation: 0,
-        titleSpacing: 16,
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF1E1B4B), Color(0xFF3730A3), Color(0xFF2563EB)],
-              begin: Alignment.centerLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-        ),
-        title: Row(
+        titleSpacing: 20,
+        title: const Row(
           children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.14),
-                borderRadius: BorderRadius.circular(13),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-              ),
-              child: const Icon(Icons.school_rounded, color: Colors.white, size: 25),
-            ),
-            const SizedBox(width: 11),
-            const Expanded(
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
                     'Learning Studio',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white),
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: AppTheme.inkColor,
+                    ),
                   ),
-                  SizedBox(height: 3),
+                  SizedBox(height: 6),
                   Text(
-                    'مساحة تعلمك وتطوير مستواك في الإنجليزية',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 11, color: Color(0xFFDBEAFE), fontWeight: FontWeight.w500),
+                    'مساحة صغيرة، معرفة أكبر.',
+                    textDirection: TextDirection.rtl,
+                    style: TextStyle(fontSize: 11, color: AppTheme.mutedColor),
                   ),
                 ],
               ),
             ),
+            CoachIllustration(size: 94),
           ],
         ),
         bottom: PreferredSize(
@@ -122,19 +106,37 @@ class _LearnHubScreenState extends State<LearnHubScreen>
               isScrollable: true,
               tabAlignment: TabAlignment.start,
               labelColor: AppTheme.primaryColor,
-              unselectedLabelColor: const Color(0xFF64748B),
+              unselectedLabelColor: const Color(0xFF73788E),
               indicatorColor: AppTheme.primaryColor,
               indicatorWeight: 3,
               indicatorSize: TabBarIndicatorSize.label,
               dividerColor: const Color(0xFFE8ECF4),
               labelPadding: const EdgeInsets.symmetric(horizontal: 15),
-              labelStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
-              unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+              labelStyle: const TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 12,
+              ),
+              unselectedLabelStyle: const TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+              ),
               tabs: const [
-                Tab(icon: Icon(Icons.menu_book_rounded, size: 19), text: 'القواعد (Grammar)'),
-                Tab(icon: Icon(Icons.quiz_rounded, size: 19), text: 'اختبار 50 سؤال'),
-                Tab(icon: Icon(Icons.record_voice_over_rounded, size: 19), text: 'قوة النطق (Pronunciation)'),
-                Tab(icon: Icon(Icons.headphones_rounded, size: 19), text: 'قوة الاستماع (Listening)'),
+                Tab(
+                  icon: Icon(Icons.menu_book_rounded, size: 19),
+                  text: 'القواعد (Grammar)',
+                ),
+                Tab(
+                  icon: Icon(Icons.quiz_rounded, size: 19),
+                  text: 'اختبار 50 سؤال',
+                ),
+                Tab(
+                  icon: Icon(Icons.record_voice_over_rounded, size: 19),
+                  text: 'قوة النطق (Pronunciation)',
+                ),
+                Tab(
+                  icon: Icon(Icons.headphones_rounded, size: 19),
+                  text: 'قوة الاستماع (Listening)',
+                ),
               ],
             ),
           ),
@@ -160,7 +162,9 @@ class _LearnHubScreenState extends State<LearnHubScreen>
   Widget _buildGrammarTab(AppProvider provider) {
     final filteredTopics = _selectedLevel == 'ALL'
         ? provider.grammarTopics
-        : provider.grammarTopics.where((t) => t.level == _selectedLevel).toList();
+        : provider.grammarTopics
+              .where((t) => t.level == _selectedLevel)
+              .toList();
 
     return Column(
       children: [
@@ -183,7 +187,9 @@ class _LearnHubScreenState extends State<LearnHubScreen>
                 selectedColor: AppTheme.primaryColor.withValues(alpha: 0.15),
                 backgroundColor: const Color(0xFFF1F5F9),
                 labelStyle: TextStyle(
-                  color: isSelected ? AppTheme.primaryColor : const Color(0xFF475569),
+                  color: isSelected
+                      ? AppTheme.primaryColor
+                      : const Color(0xFF475569),
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                   fontSize: 12,
                 ),
@@ -196,7 +202,7 @@ class _LearnHubScreenState extends State<LearnHubScreen>
             },
           ),
         ),
-        const Divider(height: 1, color: Color(0xFFE2E8F0)),
+        const Divider(height: 1, color: Color(0xFFE9EAF4)),
 
         // Topics List
         Expanded(
@@ -205,7 +211,8 @@ class _LearnHubScreenState extends State<LearnHubScreen>
                   child: Text('No grammar topics found for this level.'),
                 )
               : RefreshIndicator(
-                  onRefresh: () => provider.fetchGrammarTopicsIfNeeded(force: true),
+                  onRefresh: () =>
+                      provider.fetchGrammarTopicsIfNeeded(force: true),
                   child: ListView.builder(
                     padding: const EdgeInsets.all(16),
                     itemCount: filteredTopics.length,
@@ -231,7 +238,7 @@ class _LearnHubScreenState extends State<LearnHubScreen>
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: const Color(0xFFE9EAF4)),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -241,7 +248,10 @@ class _LearnHubScreenState extends State<LearnHubScreen>
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: AppTheme.primaryColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(6),
@@ -263,7 +273,7 @@ class _LearnHubScreenState extends State<LearnHubScreen>
                     overflow: TextOverflow.ellipsis,
                     maxLines: 1,
                     style: const TextStyle(
-                      color: Color(0xFF64748B),
+                      color: Color(0xFF73788E),
                       fontWeight: FontWeight.bold,
                       fontSize: 13,
                     ),
@@ -277,13 +287,17 @@ class _LearnHubScreenState extends State<LearnHubScreen>
               style: const TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
-                color: Color(0xFF0F172A),
+                color: Color(0xFF252B4A),
               ),
             ),
             const SizedBox(height: 4),
             Text(
               topic.summary,
-              style: const TextStyle(fontSize: 13, color: Color(0xFF475569), height: 1.3),
+              style: const TextStyle(
+                fontSize: 13,
+                color: Color(0xFF475569),
+                height: 1.3,
+              ),
             ),
             const SizedBox(height: 14),
             Row(
@@ -301,7 +315,9 @@ class _LearnHubScreenState extends State<LearnHubScreen>
                     label: const Text('شرح الدرس'),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 10),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
                   ),
                 ),
@@ -311,23 +327,27 @@ class _LearnHubScreenState extends State<LearnHubScreen>
                     onPressed: context.watch<AppProvider>().isLearnLoading
                         ? null
                         : () async {
-                      final provider = context.read<AppProvider>();
-                      final quiz = await provider.fetch50QuestionQuiz(topicId: topic.id);
-                      if (quiz != null && mounted) {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => QuizScreen(quiz: quiz),
-                          ),
-                        );
-                      }
-                    },
+                            final provider = context.read<AppProvider>();
+                            final quiz = await provider.fetch50QuestionQuiz(
+                              topicId: topic.id,
+                            );
+                            if (quiz != null && mounted) {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => QuizScreen(quiz: quiz),
+                                ),
+                              );
+                            }
+                          },
                     icon: const Icon(Icons.bolt, size: 16),
                     label: const Text('اختبار 50 سؤال'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.primaryColor,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 10),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
                   ),
                 ),
@@ -351,171 +371,246 @@ class _LearnHubScreenState extends State<LearnHubScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-          // Hero Exam Card
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF3B82F6), Color(0xFF1D4ED8)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+              // Hero Exam Card
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF3B82F6), Color(0xFF1D4ED8)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(Icons.flash_on_rounded, color: Colors.white, size: 28),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(
+                            Icons.flash_on_rounded,
+                            color: Colors.white,
+                            size: 28,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'اختبار الـ 50 سؤال الحي',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 18,
+                                ),
+                              ),
+                              Text(
+                                '50-Question Live Mastery Exam',
+                                style: TextStyle(
+                                  color: Color(0xFFDBEAFE),
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 12),
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'اختبار الـ 50 سؤال الحي',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 18,
+                    const SizedBox(height: 16),
+                    const Text(
+                      'اختبر مستواك بدقة من خلال 50 سؤال متعدد الخيارات (MCQ) تم إعدادها وفقاً لمعايير الإطار الأوروبي CEFR لتثبيت القواعد والنطق.',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        height: 1.5,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Wrap(
+                      spacing: 16,
+                      runSpacing: 8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.check_circle_outline,
+                              color: Colors.white70,
+                              size: 16,
                             ),
-                          ),
-                          Text(
-                            '50-Question Live Mastery Exam',
-                            style: TextStyle(color: Color(0xFFDBEAFE), fontSize: 13),
-                          ),
-                        ],
+                            SizedBox(width: 6),
+                            Text(
+                              '50 سؤال متعدد الخيارات',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.timer_outlined,
+                              color: Colors.white70,
+                              size: 16,
+                            ),
+                            SizedBox(width: 6),
+                            Text(
+                              'توقيت حي وتقييم فوري',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.auto_stories_outlined,
+                              color: Colors.white70,
+                              size: 16,
+                            ),
+                            SizedBox(width: 6),
+                            Text(
+                              'شرح نحوي عربي بعد الإجابة',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEEF2FF),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFC7D2FE)),
+                ),
+                child: const Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.lightbulb_outline_rounded,
+                      color: AppTheme.primaryColor,
+                      size: 21,
+                    ),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'بعد كل إجابة ستجد شرحًا بالعربية للقاعدة، وتصريفات الفعل، وأمثلة مترجمة تساعدك على فهم سبب صحة الإجابة.',
+                        style: TextStyle(
+                          color: Color(0xFF3730A3),
+                          fontSize: 13,
+                          height: 1.55,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
-                const Text(
-                  'اختبر مستواك بدقة من خلال 50 سؤال متعدد الخيارات (MCQ) تم إعدادها وفقاً لمعايير الإطار الأوروبي CEFR لتثبيت القواعد والنطق.',
-                  style: TextStyle(color: Colors.white, fontSize: 13, height: 1.5),
-                ),
-                const SizedBox(height: 16),
-                const Wrap(
-                  spacing: 16,
-                  runSpacing: 8,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    Row(mainAxisSize: MainAxisSize.min, children: [
-                      Icon(Icons.check_circle_outline, color: Colors.white70, size: 16),
-                      SizedBox(width: 6),
-                      Text('50 سؤال متعدد الخيارات', style: TextStyle(color: Colors.white, fontSize: 12)),
-                    ]),
-                    Row(mainAxisSize: MainAxisSize.min, children: [
-                      Icon(Icons.timer_outlined, color: Colors.white70, size: 16),
-                      SizedBox(width: 6),
-                      Text('توقيت حي وتقييم فوري', style: TextStyle(color: Colors.white, fontSize: 12)),
-                    ]),
-                    Row(mainAxisSize: MainAxisSize.min, children: [
-                      Icon(Icons.auto_stories_outlined, color: Colors.white70, size: 16),
-                      SizedBox(width: 6),
-                      Text('شرح نحوي عربي بعد الإجابة', style: TextStyle(color: Colors.white, fontSize: 12)),
-                    ]),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: const Color(0xFFEEF2FF),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFFC7D2FE)),
-            ),
-            child: const Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(Icons.lightbulb_outline_rounded, color: AppTheme.primaryColor, size: 21),
-                SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'بعد كل إجابة ستجد شرحًا بالعربية للقاعدة، وتصريفات الفعل، وأمثلة مترجمة تساعدك على فهم سبب صحة الإجابة.',
-                    style: TextStyle(color: Color(0xFF3730A3), fontSize: 13, height: 1.55, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 24),
+
+              const Text(
+                'اختر المستوى المطلوب اختباره:',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+              ),
+              const SizedBox(height: 12),
+
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].map((lvl) {
+                  final isSelected = _examTargetLevel == lvl;
+                  return ChoiceChip(
+                    label: Text('Level $lvl'),
+                    selected: isSelected,
+                    selectedColor: AppTheme.primaryColor,
+                    backgroundColor: Colors.white,
+                    labelStyle: TextStyle(
+                      color: isSelected
+                          ? Colors.white
+                          : const Color(0xFF1E293B),
+                      fontWeight: FontWeight.bold,
+                    ),
+                    onSelected: (selected) {
+                      if (selected) {
+                        setState(() => _examTargetLevel = lvl);
+                      }
+                    },
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 24),
+
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: provider.isLearnLoading
+                      ? null
+                      : () async {
+                          final quiz = await provider.fetch50QuestionQuiz(
+                            level: _examTargetLevel,
+                          );
+                          if (quiz != null && mounted) {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => QuizScreen(quiz: quiz),
+                              ),
+                            );
+                          }
+                        },
+                  icon: provider.isLearnLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.play_arrow_rounded, size: 24),
+                  label: Text(
+                    provider.isLearnLoading
+                        ? 'جاري تجهيز الاختبار...'
+                        : 'ابدأ اختبار 50 سؤال لمستوى ($_examTargetLevel)',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryColor,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                   ),
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-
-          const Text(
-            'اختر المستوى المطلوب اختباره:',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-          ),
-          const SizedBox(height: 12),
-
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].map((lvl) {
-              final isSelected = _examTargetLevel == lvl;
-              return ChoiceChip(
-                label: Text('Level $lvl'),
-                selected: isSelected,
-                selectedColor: AppTheme.primaryColor,
-                backgroundColor: Colors.white,
-                labelStyle: TextStyle(
-                  color: isSelected ? Colors.white : const Color(0xFF1E293B),
-                  fontWeight: FontWeight.bold,
-                ),
-                onSelected: (selected) {
-                  if (selected) {
-                    setState(() => _examTargetLevel = lvl);
-                  }
-                },
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: 24),
-
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: provider.isLearnLoading
-                  ? null
-                  : () async {
-                final quiz = await provider.fetch50QuestionQuiz(level: _examTargetLevel);
-                if (quiz != null && mounted) {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => QuizScreen(quiz: quiz),
-                    ),
-                  );
-                }
-              },
-              icon: provider.isLearnLoading
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Icon(Icons.play_arrow_rounded, size: 24),
-              label: Text(
-                provider.isLearnLoading
-                    ? 'جاري تجهيز الاختبار...'
-                    : 'ابدأ اختبار 50 سؤال لمستوى ($_examTargetLevel)',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-              ),
-            ),
-          ),
             ],
           ),
         ),
@@ -527,7 +622,9 @@ class _LearnHubScreenState extends State<LearnHubScreen>
   // TAB 3: PRONUNCIATION MASTER TIPS
   // ==========================================
   Widget _buildPronunciationTab(AppProvider provider) {
-    final pronTips = provider.learningTips.where((t) => t.category == 'PRONUNCIATION').toList();
+    final pronTips = provider.learningTips
+        .where((t) => t.category == 'PRONUNCIATION')
+        .toList();
 
     return RefreshIndicator(
       onRefresh: () => provider.fetchLearningTipsIfNeeded(force: true),
@@ -546,7 +643,9 @@ class _LearnHubScreenState extends State<LearnHubScreen>
   // TAB 4: LISTENING MASTER TIPS
   // ==========================================
   Widget _buildListeningTab(AppProvider provider) {
-    final listTips = provider.learningTips.where((t) => t.category == 'LISTENING').toList();
+    final listTips = provider.learningTips
+        .where((t) => t.category == 'LISTENING')
+        .toList();
 
     return RefreshIndicator(
       onRefresh: () => provider.fetchLearningTipsIfNeeded(force: true),
@@ -567,7 +666,7 @@ class _LearnHubScreenState extends State<LearnHubScreen>
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: const Color(0xFFE9EAF4)),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -577,7 +676,10 @@ class _LearnHubScreenState extends State<LearnHubScreen>
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFFEFF6FF),
                     borderRadius: BorderRadius.circular(6),
@@ -599,7 +701,7 @@ class _LearnHubScreenState extends State<LearnHubScreen>
                     overflow: TextOverflow.ellipsis,
                     maxLines: 1,
                     style: const TextStyle(
-                      color: Color(0xFF64748B),
+                      color: Color(0xFF73788E),
                       fontWeight: FontWeight.bold,
                       fontSize: 13,
                     ),
@@ -613,18 +715,26 @@ class _LearnHubScreenState extends State<LearnHubScreen>
               style: const TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
-                color: Color(0xFF0F172A),
+                color: Color(0xFF252B4A),
               ),
             ),
             const SizedBox(height: 4),
             Text(
               tip.summary,
-              style: const TextStyle(fontSize: 13, color: Color(0xFF475569), height: 1.3),
+              style: const TextStyle(
+                fontSize: 13,
+                color: Color(0xFF475569),
+                height: 1.3,
+              ),
             ),
             const SizedBox(height: 4),
             Text(
               tip.summaryArabic,
-              style: const TextStyle(fontSize: 12, color: Color(0xFF64748B), height: 1.3),
+              style: const TextStyle(
+                fontSize: 12,
+                color: Color(0xFF73788E),
+                height: 1.3,
+              ),
             ),
 
             // Drills with native TTS Audio
@@ -632,7 +742,11 @@ class _LearnHubScreenState extends State<LearnHubScreen>
               const Divider(height: 24),
               const Text(
                 'تدريبات صوتية ناطقة (Interactive Audio Drills):',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1E293B)),
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                  color: Color(0xFF1E293B),
+                ),
               ),
               const SizedBox(height: 10),
               ...tip.drills.map(
@@ -640,14 +754,17 @@ class _LearnHubScreenState extends State<LearnHubScreen>
                   margin: const EdgeInsets.only(bottom: 8),
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
+                    color: const Color(0xFFFCFCFF),
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                    border: Border.all(color: const Color(0xFFE9EAF4)),
                   ),
                   child: Row(
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.volume_up_rounded, color: AppTheme.primaryColor),
+                        icon: const Icon(
+                          Icons.volume_up_rounded,
+                          color: AppTheme.primaryColor,
+                        ),
                         onPressed: () => _tts.speak(drill.text),
                       ),
                       const SizedBox(width: 8),
@@ -673,7 +790,10 @@ class _LearnHubScreenState extends State<LearnHubScreen>
                             ),
                             Text(
                               drill.arabicTip,
-                              style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: Color(0xFF73788E),
+                              ),
                             ),
                           ],
                         ),

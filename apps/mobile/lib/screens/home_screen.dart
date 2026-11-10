@@ -2,21 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../config/theme.dart';
 import '../providers/app_provider.dart';
-import '../widgets/level_badge.dart';
-import '../widgets/score_card.dart';
+import '../widgets/coach_illustration.dart';
 
 class HomeScreen extends StatelessWidget {
-  final VoidCallback onStartPractice;
-  final VoidCallback onStartAssessment;
-  final VoidCallback? onStartConversation;
-  final VoidCallback? onOpenAdmin;
-
+  final VoidCallback onStartPractice, onStartAssessment;
+  final VoidCallback? onStartConversation,
+      onOpenAdmin,
+      onOpenLearn,
+      onOpenWords;
   const HomeScreen({
     super.key,
     required this.onStartPractice,
     required this.onStartAssessment,
     this.onStartConversation,
     this.onOpenAdmin,
+    this.onOpenLearn,
+    this.onOpenWords,
   });
 
   @override
@@ -24,43 +25,51 @@ class HomeScreen extends StatelessWidget {
     final provider = context.watch<AppProvider>();
     final user = provider.user;
     final profile = provider.profile;
-    final quota = provider.quota;
-
     if (user == null || profile == null) {
       return const Center(child: CircularProgressIndicator());
     }
-
+    final remaining = (provider.quota?['dailySessionsRemaining'] as num?)
+        ?.toInt();
+    final questionsLeft = (provider.quota?['dailyQuestionsRemaining'] as num?)
+        ?.toInt();
+    final tier = provider.quota?['tierName']?.toString();
     return Scaffold(
       appBar: AppBar(
-        title: Row(
+        title: const Row(
           children: [
-            const Icon(Icons.school_rounded, color: AppTheme.primaryColor),
-            const SizedBox(width: 8),
-            const Text('English Coach'),
+            Icon(
+              Icons.auto_stories_rounded,
+              color: AppTheme.primaryColor,
+              size: 25,
+            ),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'English Coach',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+              ),
+            ),
           ],
         ),
         actions: [
           if (provider.isAdmin && onOpenAdmin != null)
-            TextButton.icon(
+            IconButton(
+              tooltip: 'Admin Panel',
+              icon: const Icon(Icons.admin_panel_settings_outlined),
               onPressed: onOpenAdmin,
-              icon: const Icon(
-                Icons.admin_panel_settings_rounded,
-                color: AppTheme.primaryColor,
-              ),
-              label: const Text(
-                'Admin Panel',
-                style: TextStyle(
-                  color: AppTheme.primaryColor,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
             ),
           IconButton(
             tooltip: 'Sign Out',
-            icon: const Icon(Icons.logout_rounded, color: Color(0xFF64748B)),
-            onPressed: () => provider.logout(),
+            icon: const Icon(
+              Icons.logout_rounded,
+              color: AppTheme.mutedColor,
+              size: 21,
+            ),
+            onPressed: provider.logout,
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
         ],
       ),
       body: RefreshIndicator(
@@ -71,437 +80,349 @@ class HomeScreen extends StatelessWidget {
         },
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 30),
           child: Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 800),
+              constraints: const BoxConstraints(maxWidth: 820),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Profile Header Banner
-                  Card(
-                    color: AppTheme.primaryColor,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              CircleAvatar(
-                                radius: 28,
-                                backgroundColor: Colors.white,
-                                child: Text(
-                                  user.name.isNotEmpty
-                                      ? user.name[0].toUpperCase()
-                                      : 'U',
-                                  style: const TextStyle(
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppTheme.primaryColor,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Welcome back, ${user.name}!',
-                                      style: const TextStyle(
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      user.email,
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        color: Colors.white.withValues(
-                                          alpha: 0.8,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              // Streak
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 14,
-                                  vertical: 8,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.18),
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Text(
-                                      '🔥',
-                                      style: TextStyle(fontSize: 18),
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      '${profile.dailyStreak} Days',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 20),
-                          const Divider(color: Colors.white24),
-                          const SizedBox(height: 12),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Row(
-                                children: [
-                                  const Text(
-                                    'Current Level: ',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                  LevelBadge(
-                                    level: profile.currentLevel,
-                                    fontSize: 13,
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 2,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Row(
-                                children: [
-                                  const Text(
-                                    'Target Goal: ',
-                                    style: TextStyle(
-                                      color: Colors.white70,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                  LevelBadge(
-                                    level: profile.targetLevel,
-                                    fontSize: 12,
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 2,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Quota Info Bar
-                  if (quota != null) ...[
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF1F5F9),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        children: [
-                          _buildQuotaItem(
-                            Icons.chat_bubble_outline_rounded,
-                            '${quota['dailyQuestionsRemaining'] ?? 0} Questions left',
-                          ),
-                          Container(
-                            width: 1,
-                            height: 24,
-                            color: const Color(0xFFCBD5E1),
-                          ),
-                          _buildQuotaItem(
-                            Icons.timer_outlined,
-                            '${quota['dailySessionsRemaining'] ?? 0} Sessions left',
-                          ),
-                          Container(
-                            width: 1,
-                            height: 24,
-                            color: const Color(0xFFCBD5E1),
-                          ),
-                          _buildQuotaItem(
-                            Icons.verified_outlined,
-                            'Tier: ${quota['tierName'] ?? 'FREE'}',
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                  ],
-
-                  // Real-Time AI Conversation Coach Hero Card
-                  if (onStartConversation != null) ...[
-                    Container(
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF4338CA), Color(0xFF6D28D9)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF6366F1).withValues(alpha: 0.35),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(16),
-                          onTap: onStartConversation,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-                            child: Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.18),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(
-                                    Icons.record_voice_over_rounded,
-                                    color: Colors.white,
-                                    size: 28,
-                                  ),
-                                ),
-                                const SizedBox(width: 14),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          const Text(
-                                            'محادثة ذكية تفاعلية',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 6),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 6,
-                                              vertical: 2,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: Colors.white.withValues(alpha: 0.25),
-                                              borderRadius: BorderRadius.circular(10),
-                                            ),
-                                            child: const Text(
-                                              'LIVE AI 🎙️',
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 4),
-                                      const Text(
-                                        'تحدث واستمع بالإنجليزية مع تصحيح فوري وتقييم شامل',
-                                        style: TextStyle(
-                                          color: Colors.white70,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const Icon(
-                                  Icons.arrow_forward_ios_rounded,
-                                  color: Colors.white,
-                                  size: 16,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                  ],
-
-                  // Action Buttons
                   Row(
                     children: [
                       Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: onStartPractice,
-                          icon: const Icon(Icons.play_arrow_rounded, size: 24),
-                          label: const Text('Daily Practice'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.primaryColor,
-                            padding: const EdgeInsets.symmetric(vertical: 18),
-                          ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Good to see you, ${user.name.split(' ').first} ✦',
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: AppTheme.mutedColor,
+                                fontSize: 12,
+                              ),
+                            ),
+                            const SizedBox(height: 5),
+                            const Text(
+                              'Make a little room to grow.',
+                              style: TextStyle(
+                                fontSize: 23,
+                                fontWeight: FontWeight.w800,
+                                height: 1.4,
+                                letterSpacing: -.5,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: onStartAssessment,
-                          icon: const Icon(Icons.assessment_outlined, size: 22),
-                          label: const Text('CEFR Test'),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 18),
-                            side: const BorderSide(
-                              color: AppTheme.primaryColor,
-                              width: 1.5,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
+                      const SizedBox(width: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppTheme.lavenderColor,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Text(
+                          profile.currentLevel,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: AppTheme.primaryColor,
+                            fontWeight: FontWeight.w800,
                           ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 28),
-
-                  // Skill Breakdown Scores
-                  const Text(
-                    'Proficiency Overview',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF0F172A),
+                  const SizedBox(height: 24),
+                  Container(
+                    padding: const EdgeInsets.all(22),
+                    decoration: BoxDecoration(
+                      gradient: AppTheme.softGradient,
+                      borderRadius: BorderRadius.circular(25),
+                      border: Border.all(color: const Color(0xFFE5E4F6)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        LayoutBuilder(
+                          builder: (context, constraints) => Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'YOUR DAILY MOMENT',
+                                      style: TextStyle(
+                                        fontFamily: 'Roboto',
+                                        fontSize: 9,
+                                        letterSpacing: 1.8,
+                                        color: Color(0xFF888CB3),
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    const Text(
+                                      'A little practice. A little more confidence.',
+                                      style: TextStyle(
+                                        fontSize: 21,
+                                        fontWeight: FontWeight.w800,
+                                        height: 1.5,
+                                        letterSpacing: -.5,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 10),
+                                    const Text(
+                                      'خطوة صغيرة النهارده، فرق كبير مع الوقت.',
+                                      textDirection: TextDirection.rtl,
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        height: 1.9,
+                                        color: AppTheme.mutedColor,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              if (constraints.maxWidth > 240)
+                                CoachIllustration(
+                                  size: constraints.maxWidth < 430 ? 112 : 160,
+                                ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 22),
+                        ElevatedButton.icon(
+                          key: const Key('daily-practice'),
+                          onPressed: onStartPractice,
+                          icon: const Icon(Icons.play_arrow_rounded, size: 21),
+                          label: const Text(
+                            'Start your practice',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          remaining == null
+                              ? 'Five exercises. One step forward.'
+                              : '$remaining daily session${remaining == 1 ? '' : 's'} remaining · Your pace, your progress.',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 9,
+                            color: Color(0xFF62677E),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 14),
+                  if (questionsLeft != null ||
+                      (tier != null && tier.isNotEmpty)) ...[
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 6,
+                      children: [
+                        if (questionsLeft != null)
+                          Chip(
+                            avatar: const Icon(
+                              Icons.chat_bubble_outline_rounded,
+                              size: 15,
+                              color: AppTheme.primaryColor,
+                            ),
+                            label: Text(
+                              '$questionsLeft questions left',
+                              style: const TextStyle(fontSize: 10),
+                            ),
+                          ),
+                        if (tier != null && tier.isNotEmpty)
+                          Chip(
+                            avatar: const Icon(
+                              Icons.verified_outlined,
+                              size: 15,
+                              color: AppTheme.accentColor,
+                            ),
+                            label: Text(
+                              '$tier plan',
+                              style: const TextStyle(fontSize: 10),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _Metric(
+                          icon: Icons.local_fire_department_outlined,
+                          label: 'Day streak',
+                          value: '${profile.dailyStreak}',
+                          wash: AppTheme.lavenderColor,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _Metric(
+                          icon: Icons.trending_up_rounded,
+                          label: 'Practice score',
+                          value: '${profile.overallScore.round()}%',
+                          wash: AppTheme.blueWashColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 28),
+                  const Text(
+                    'A space for every step',
+                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Choose what feels right for today.',
+                    style: TextStyle(fontSize: 11, color: AppTheme.mutedColor),
+                  ),
+                  const SizedBox(height: 16),
                   LayoutBuilder(
                     builder: (context, constraints) {
-                      final isWide = constraints.maxWidth > 650;
-                      final isMedium = constraints.maxWidth > 420;
-                      return GridView.count(
-                        crossAxisCount: isWide ? 5 : (isMedium ? 3 : 2),
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                        childAspectRatio: isWide
-                            ? 1.3
-                            : (isMedium ? 1.2 : 1.02),
+                      final cards = [
+                        _JourneyCard(
+                          key: const Key('level-assessment'),
+                          title: 'Find your level',
+                          subtitle: 'اعرف نقطة البداية المناسبة ليك',
+                          detail: 'CEFR · A1–C2',
+                          icon: Icons.route_outlined,
+                          color: AppTheme.lavenderColor,
+                          tint: AppTheme.accentColor,
+                          onTap: onStartAssessment,
+                        ),
+                        _JourneyCard(
+                          title: 'Let’s talk',
+                          subtitle: 'محادثة صغيرة، وثقة أكبر',
+                          detail: 'AI CONVERSATION',
+                          icon: Icons.chat_bubble_outline_rounded,
+                          color: AppTheme.blueWashColor,
+                          tint: AppTheme.primaryColor,
+                          onTap: onStartConversation,
+                        ),
+                        _JourneyCard(
+                          key: const Key('learn-library'),
+                          title: 'Learning studio',
+                          subtitle: 'افهم القواعد، وجرّب بنفسك',
+                          detail: 'LESSONS & QUIZZES',
+                          icon: Icons.auto_stories_outlined,
+                          color: const Color(0xFFF5F1FB),
+                          tint: AppTheme.accentColor,
+                          onTap: onOpenLearn,
+                        ),
+                        _JourneyCard(
+                          title: 'Your word collection',
+                          subtitle: 'كلمات جديدة تستاهل تحتفظ بيها',
+                          detail: 'SAVED VOCABULARY',
+                          icon: Icons.bookmark_border_rounded,
+                          color: const Color(0xFFEEF4FB),
+                          tint: const Color(0xFF7594C3),
+                          onTap: onOpenWords,
+                        ),
+                      ];
+                      if (constraints.maxWidth < 340) {
+                        return Column(
+                          children: [
+                            for (final card in cards)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: card,
+                              ),
+                          ],
+                        );
+                      }
+                      return Column(
                         children: [
-                          ScoreCard(
-                            title: 'Overall Score',
-                            score: profile.overallScore,
-                            icon: Icons.auto_awesome,
-                            color: AppTheme.primaryColor,
-                          ),
-                          ScoreCard(
-                            title: 'Pronunciation',
-                            score: profile.pronunciationScore,
-                            icon: Icons.hearing_rounded,
-                            color: const Color(0xFF8B5CF6),
-                            isAssessed: profile.pronunciationScore > 0,
-                          ),
-                          ScoreCard(
-                            title: 'Fluency',
-                            score: profile.fluencyScore,
-                            icon: Icons.record_voice_over,
-                            color: const Color(0xFFD97706),
-                          ),
-                          ScoreCard(
-                            title: 'Grammar',
-                            score: profile.grammarScore,
-                            icon: Icons.spellcheck,
-                            color: const Color(0xFF2563EB),
-                          ),
-                          ScoreCard(
-                            title: 'Vocabulary',
-                            score: profile.vocabularyScore,
-                            icon: Icons.menu_book,
-                            color: const Color(0xFF059669),
-                          ),
+                          for (var i = 0; i < cards.length; i += 2)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: IntrinsicHeight(
+                                child: Row(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    Expanded(child: cards[i]),
+                                    const SizedBox(width: 12),
+                                    Expanded(child: cards[i + 1]),
+                                  ],
+                                ),
+                              ),
+                            ),
                         ],
                       );
                     },
                   ),
-                  const SizedBox(height: 28),
-
-                  // Weaknesses Focus
+                  const SizedBox(height: 14),
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      border: Border.all(color: AppTheme.borderColor),
+                      borderRadius: BorderRadius.circular(22),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const Text(
+                          'Your progress, one skill at a time',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        _Skill(
+                          label: 'Grammar',
+                          score: profile.grammarScore,
+                          color: AppTheme.primaryColor,
+                        ),
+                        _Skill(
+                          label: 'Vocabulary',
+                          score: profile.vocabularyScore,
+                          color: AppTheme.accentColor,
+                        ),
+                        _Skill(
+                          label: 'Text fluency',
+                          score: profile.fluencyScore,
+                          color: const Color(0xFF83A4D5),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          'Your current level is ${profile.currentLevel}. Keep building toward ${profile.targetLevel}.',
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: AppTheme.mutedColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                   if (profile.recurringWeaknesses.isNotEmpty) ...[
-                    const Text(
-                      'Areas For Improvement',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF0F172A),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Room to grow: ${profile.recurringWeaknesses.join(' · ')}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.mutedColor,
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: profile.recurringWeaknesses.map((w) {
-                        return Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFEF3C7),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: const Color(0xFFFDE68A)),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.trending_up,
-                                size: 16,
-                                color: Color(0xFFD97706),
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                w,
-                                style: const TextStyle(
-                                  color: Color(0xFF92400E),
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      }).toList(),
-                    ),
                   ],
+                  const SizedBox(height: 26),
+                  const Text(
+                    'You don’t have to be perfect. Just keep going. ✦',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 10, color: Color(0xFFA0A2B9)),
+                  ),
                 ],
               ),
             ),
@@ -510,22 +431,175 @@ class HomeScreen extends StatelessWidget {
       ),
     );
   }
+}
 
-  Widget _buildQuotaItem(IconData icon, String text) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
+class _Metric extends StatelessWidget {
+  final IconData icon;
+  final String label, value;
+  final Color wash;
+  const _Metric({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.wash,
+  });
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(15),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(color: AppTheme.borderColor),
+    ),
+    child: Row(
       children: [
-        Icon(icon, size: 16, color: const Color(0xFF64748B)),
-        const SizedBox(width: 6),
-        Text(
-          text,
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: Color(0xFF475569),
+        Container(
+          padding: const EdgeInsets.all(9),
+          decoration: BoxDecoration(
+            color: wash,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, size: 20, color: AppTheme.primaryColor),
+        ),
+        const SizedBox(width: 11),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 19,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              Text(
+                label,
+                style: const TextStyle(fontSize: 9, color: AppTheme.mutedColor),
+              ),
+            ],
           ),
         ),
       ],
-    );
-  }
+    ),
+  );
+}
+
+class _JourneyCard extends StatelessWidget {
+  final String title, subtitle, detail;
+  final IconData icon;
+  final Color color, tint;
+  final VoidCallback? onTap;
+  const _JourneyCard({
+    super.key,
+    required this.title,
+    required this.subtitle,
+    required this.detail,
+    required this.icon,
+    required this.color,
+    required this.tint,
+    required this.onTap,
+  });
+  @override
+  Widget build(BuildContext context) => Material(
+    color: color,
+    borderRadius: BorderRadius.circular(20),
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Padding(
+        padding: const EdgeInsets.all(19),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(9),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: .7),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, color: tint, size: 22),
+                ),
+                const Spacer(),
+                Icon(
+                  Icons.north_east_rounded,
+                  color: tint.withValues(alpha: .6),
+                  size: 17,
+                ),
+              ],
+            ),
+            const SizedBox(height: 17),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 7),
+            Text(
+              subtitle,
+              textDirection: TextDirection.rtl,
+              style: const TextStyle(
+                fontSize: 10,
+                height: 1.8,
+                color: AppTheme.mutedColor,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              detail,
+              style: TextStyle(
+                fontFamily: 'Roboto',
+                fontSize: 8,
+                color: tint,
+                letterSpacing: .8,
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+class _Skill extends StatelessWidget {
+  final String label;
+  final double score;
+  final Color color;
+  const _Skill({required this.label, required this.score, required this.color});
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 16),
+    child: Column(
+      children: [
+        Row(
+          children: [
+            Text(
+              label,
+              style: const TextStyle(fontSize: 11, color: AppTheme.mutedColor),
+            ),
+            const Spacer(),
+            Text(
+              '${score.round()}%',
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: LinearProgressIndicator(
+            value: (score / 100).clamp(0, 1),
+            minHeight: 5,
+            color: color,
+            backgroundColor: AppTheme.lavenderColor,
+          ),
+        ),
+      ],
+    ),
+  );
 }

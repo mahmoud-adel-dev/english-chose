@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../config/theme.dart';
+import '../widgets/coach_illustration.dart';
 import '../providers/app_provider.dart';
 import '../widgets/level_badge.dart';
 import '../services/tts_service.dart';
@@ -131,7 +132,10 @@ class _AssessmentScreenState extends State<AssessmentScreen>
                 if (item != null) ...[
                   const SizedBox(width: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: AppTheme.primaryColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(6),
@@ -150,7 +154,7 @@ class _AssessmentScreenState extends State<AssessmentScreen>
             ),
             const Text(
               'CEFR Placement Test • Adaptive',
-              style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+              style: TextStyle(fontSize: 11, color: Color(0xFF73788E)),
             ),
           ],
         ),
@@ -181,13 +185,19 @@ class _AssessmentScreenState extends State<AssessmentScreen>
                   curve: Curves.easeInOut,
                   tween: Tween<double>(
                     begin: 0,
-                    end: (item.itemNumber) / (item.totalItems <= 0 ? 6.0 : item.totalItems.toDouble()),
+                    end:
+                        (item.itemNumber) /
+                        (item.totalItems <= 0
+                            ? 6.0
+                            : item.totalItems.toDouble()),
                   ),
                   builder: (context, value, _) {
                     return LinearProgressIndicator(
                       value: value,
-                      backgroundColor: const Color(0xFFE2E8F0),
-                      valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+                      backgroundColor: const Color(0xFFE9EAF4),
+                      valueColor: const AlwaysStoppedAnimation<Color>(
+                        AppTheme.primaryColor,
+                      ),
                       minHeight: 4,
                     );
                   },
@@ -222,28 +232,17 @@ class _AssessmentScreenState extends State<AssessmentScreen>
   Widget _buildIntroView(AppProvider provider) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: const EdgeInsets.all(24),
         child: Column(
           children: [
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: AppTheme.accentColor.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.psychology_rounded,
-                size: 56,
-                color: AppTheme.accentColor,
-              ),
-            ),
+            const CoachIllustration(size: 190),
             const SizedBox(height: 24),
             const Text(
               'Diagnostic CEFR Assessment',
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF0F172A),
+                color: Color(0xFF252B4A),
               ),
             ),
             const SizedBox(height: 12),
@@ -252,7 +251,7 @@ class _AssessmentScreenState extends State<AssessmentScreen>
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 14,
-                color: Color(0xFF64748B),
+                color: Color(0xFF73788E),
                 height: 1.5,
               ),
             ),
@@ -269,8 +268,9 @@ class _AssessmentScreenState extends State<AssessmentScreen>
               ],
             ),
             const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+            Wrap(
+              alignment: WrapAlignment.center,
+              runSpacing: 8,
               children: ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].map((lvl) {
                 return Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -324,7 +324,7 @@ class _AssessmentScreenState extends State<AssessmentScreen>
                 Expanded(child: Divider()),
                 Padding(
                   padding: EdgeInsets.symmetric(horizontal: 12),
-                  child: Text('OR', style: TextStyle(color: Color(0xFF64748B))),
+                  child: Text('OR', style: TextStyle(color: Color(0xFF73788E))),
                 ),
                 Expanded(child: Divider()),
               ],
@@ -363,7 +363,7 @@ class _AssessmentScreenState extends State<AssessmentScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: AppTheme.accentColor.withValues(alpha: 0.08),
+        color: AppTheme.accentColor.withValues(alpha: .08),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
@@ -371,12 +371,14 @@ class _AssessmentScreenState extends State<AssessmentScreen>
         children: [
           Icon(icon, size: 13, color: AppTheme.accentColor),
           const SizedBox(width: 4),
-          Text(
-            text,
-            style: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: AppTheme.accentColor,
+          Flexible(
+            child: Text(
+              text,
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.accentColor,
+              ),
             ),
           ),
         ],
@@ -401,7 +403,7 @@ class _AssessmentScreenState extends State<AssessmentScreen>
             ),
             const Text(
               'Adaptive difficulty',
-              style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+              style: TextStyle(fontSize: 12, color: Color(0xFF73788E)),
             ),
           ],
         ),
@@ -410,7 +412,7 @@ class _AssessmentScreenState extends State<AssessmentScreen>
           borderRadius: BorderRadius.circular(6),
           child: LinearProgressIndicator(
             value: item.itemNumber / item.totalItems,
-            backgroundColor: const Color(0xFFE2E8F0),
+            backgroundColor: const Color(0xFFE9EAF4),
             valueColor: const AlwaysStoppedAnimation<Color>(
               AppTheme.primaryColor,
             ),
@@ -434,7 +436,7 @@ class _AssessmentScreenState extends State<AssessmentScreen>
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFF64748B),
+                        color: Color(0xFF73788E),
                       ),
                     ),
                     Row(
@@ -477,7 +479,7 @@ class _AssessmentScreenState extends State<AssessmentScreen>
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF0F172A),
+                    color: Color(0xFF252B4A),
                     height: 1.4,
                   ),
                 ),
@@ -491,7 +493,7 @@ class _AssessmentScreenState extends State<AssessmentScreen>
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFF64748B),
+                        color: Color(0xFF73788E),
                       ),
                     ),
                     const Spacer(),
@@ -577,12 +579,12 @@ class _AssessmentScreenState extends State<AssessmentScreen>
             width: double.infinity,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
+              color: const Color(0xFFFCFCFF),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: _isSttListening
                     ? AppTheme.primaryColor.withValues(alpha: 0.5)
-                    : const Color(0xFFE2E8F0),
+                    : const Color(0xFFE9EAF4),
                 width: _isSttListening ? 2 : 1,
               ),
             ),
@@ -628,7 +630,7 @@ class _AssessmentScreenState extends State<AssessmentScreen>
                     fontSize: 15,
                     color: _liveTranscript.isEmpty
                         ? const Color(0xFFCBD5E1)
-                        : const Color(0xFF0F172A),
+                        : const Color(0xFF252B4A),
                     fontWeight: FontWeight.w500,
                     height: 1.4,
                   ),
@@ -685,7 +687,7 @@ class _AssessmentScreenState extends State<AssessmentScreen>
               ? 'Tap to stop recording'
               : 'Tap to speak your response',
           style: const TextStyle(
-            color: Color(0xFF64748B),
+            color: Color(0xFF73788E),
             fontSize: 12,
             fontWeight: FontWeight.w500,
           ),
@@ -750,7 +752,9 @@ class _AssessmentScreenState extends State<AssessmentScreen>
     if (text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('يرجى التحدث أو كتابة إجابتك بالإنجليزية أولاً (Please speak or type your answer).'),
+          content: Text(
+            'يرجى التحدث أو كتابة إجابتك بالإنجليزية أولاً (Please speak or type your answer).',
+          ),
           backgroundColor: AppTheme.warningColor,
         ),
       );
@@ -797,7 +801,7 @@ class _AssessmentScreenState extends State<AssessmentScreen>
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
-                color: Color(0xFF0F172A),
+                color: Color(0xFF252B4A),
               ),
             ),
             const SizedBox(height: 4),
@@ -805,16 +809,14 @@ class _AssessmentScreenState extends State<AssessmentScreen>
               'CEFR Placement Test Completed',
               style: TextStyle(
                 fontSize: 13,
-                color: Color(0xFF64748B),
+                color: Color(0xFF73788E),
                 fontWeight: FontWeight.w500,
               ),
             ),
             const SizedBox(height: 16),
             const Row(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text('⭐ ⭐ ⭐', style: TextStyle(fontSize: 22)),
-              ],
+              children: [Text('⭐ ⭐ ⭐', style: TextStyle(fontSize: 22))],
             ),
             const SizedBox(height: 16),
             Container(
@@ -822,7 +824,10 @@ class _AssessmentScreenState extends State<AssessmentScreen>
               decoration: BoxDecoration(
                 color: levelColor.withValues(alpha: 0.12),
                 shape: BoxShape.circle,
-                border: Border.all(color: levelColor.withValues(alpha: 0.3), width: 2),
+                border: Border.all(
+                  color: levelColor.withValues(alpha: 0.3),
+                  width: 2,
+                ),
               ),
               child: Text(
                 result.assessedLevel,
@@ -848,7 +853,7 @@ class _AssessmentScreenState extends State<AssessmentScreen>
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 12,
-                color: Color(0xFF64748B),
+                color: Color(0xFF73788E),
                 height: 1.5,
               ),
             ),
@@ -875,23 +880,27 @@ class _AssessmentScreenState extends State<AssessmentScreen>
               padding: const EdgeInsets.all(18),
               width: double.infinity,
               decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
+                color: const Color(0xFFFCFCFF),
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
+                border: Border.all(color: const Color(0xFFE9EAF4)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Row(
                     children: [
-                      Icon(Icons.auto_stories_rounded, color: AppTheme.primaryColor, size: 20),
+                      Icon(
+                        Icons.auto_stories_rounded,
+                        color: AppTheme.primaryColor,
+                        size: 20,
+                      ),
                       SizedBox(width: 8),
                       Text(
                         'الخطة التعليمية المقترحة لمستواك:',
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF0F172A),
+                          color: Color(0xFF252B4A),
                         ),
                       ),
                     ],

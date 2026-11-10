@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../config/theme.dart';
 import '../providers/app_provider.dart';
 import '../widgets/save_word_dialog.dart';
+import '../widgets/coach_illustration.dart';
 
 class SavedWordsScreen extends StatefulWidget {
   const SavedWordsScreen({super.key});
@@ -39,14 +40,18 @@ class _SavedWordsScreenState extends State<SavedWordsScreen> {
         child: provider.savedWords.isEmpty
             ? ListView(
                 children: const [
-                  SizedBox(height: 140),
-                  Icon(
-                    Icons.bookmark_border_rounded,
-                    size: 64,
-                    color: Color(0xFF94A3B8),
-                  ),
+                  SizedBox(height: 40),
+                  Center(child: CoachIllustration(size: 240)),
                   SizedBox(height: 16),
                   Center(child: Text('No saved words yet.')),
+                  SizedBox(height: 8),
+                  Center(
+                    child: Text(
+                      'كل كلمة جديدة، فرصة جديدة.',
+                      textDirection: TextDirection.rtl,
+                      style: TextStyle(color: AppTheme.mutedColor),
+                    ),
+                  ),
                 ],
               )
             : ListView.separated(
@@ -76,7 +81,7 @@ class _SavedWordsScreenState extends State<SavedWordsScreen> {
                               .isNotEmpty)
                             Text(
                               item['exampleSentence'].toString(),
-                              style: const TextStyle(color: Color(0xFF64748B)),
+                              style: const TextStyle(color: Color(0xFF73788E)),
                             ),
                         ],
                       ),

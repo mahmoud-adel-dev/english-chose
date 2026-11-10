@@ -144,7 +144,7 @@ class _LocalLogsScreenState extends State<LocalLogsScreen> {
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
                           borderSide: const BorderSide(
-                            color: Color(0xFFE2E8F0),
+                            color: Color(0xFFE9EAF4),
                           ),
                         ),
                         isDense: true,
@@ -171,7 +171,7 @@ class _LocalLogsScreenState extends State<LocalLogsScreen> {
                   ],
                 ),
               ),
-              const Divider(height: 1, color: Color(0xFFE2E8F0)),
+              const Divider(height: 1, color: Color(0xFFE9EAF4)),
 
               // Logs List
               Expanded(
@@ -225,7 +225,7 @@ class _LocalLogsScreenState extends State<LocalLogsScreen> {
         fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
         color: isSelected
             ? (badgeColor ?? AppTheme.primaryColor)
-            : const Color(0xFF64748B),
+            : const Color(0xFF73788E),
       ),
     );
   }
@@ -252,7 +252,7 @@ class _LogItemCard extends StatelessWidget {
         side: BorderSide(
           color: isErr
               ? AppTheme.errorColor.withValues(alpha: 0.4)
-              : const Color(0xFFE2E8F0),
+              : const Color(0xFFE9EAF4),
         ),
       ),
       child: InkWell(
@@ -295,7 +295,7 @@ class _LogItemCard extends StatelessWidget {
                         fontSize: 13,
                         color: isErr
                             ? AppTheme.errorColor
-                            : const Color(0xFF0F172A),
+                            : const Color(0xFF252B4A),
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -324,7 +324,7 @@ class _LogItemCard extends StatelessWidget {
                       '${log.latencyMs}ms',
                       style: const TextStyle(
                         fontSize: 11,
-                        color: Color(0xFF64748B),
+                        color: Color(0xFF73788E),
                       ),
                     ),
                   ],
@@ -465,14 +465,14 @@ class _LogItemCard extends StatelessWidget {
               style: const TextStyle(
                 fontWeight: FontWeight.w600,
                 fontSize: 12,
-                color: Color(0xFF64748B),
+                color: Color(0xFF73788E),
               ),
             ),
           ),
           Expanded(
             child: SelectableText(
               value,
-              style: const TextStyle(fontSize: 12, color: Color(0xFF0F172A)),
+              style: const TextStyle(fontSize: 12, color: Color(0xFF252B4A)),
             ),
           ),
         ],
@@ -484,9 +484,9 @@ class _LogItemCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: color ?? const Color(0xFFF8FAFC),
+        color: color ?? const Color(0xFFFCFCFF),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: const Color(0xFFE9EAF4)),
       ),
       child: SelectableText(
         text,

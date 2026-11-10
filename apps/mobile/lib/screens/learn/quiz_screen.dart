@@ -105,7 +105,7 @@ class _QuizScreenState extends State<QuizScreen> {
     final progress = (_currentIndex + 1) / totalQuestions;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: const Color(0xFFFCFCFF),
       appBar: AppBar(
         title: Text(
           'Live Exam (${_currentIndex + 1}/$totalQuestions)',
@@ -124,7 +124,11 @@ class _QuizScreenState extends State<QuizScreen> {
             ),
             child: Row(
               children: [
-                const Icon(Icons.timer_outlined, size: 16, color: Color(0xFF475569)),
+                const Icon(
+                  Icons.timer_outlined,
+                  size: 16,
+                  color: Color(0xFF475569),
+                ),
                 const SizedBox(width: 4),
                 Text(
                   _formatTime(_elapsedSeconds),
@@ -142,8 +146,10 @@ class _QuizScreenState extends State<QuizScreen> {
           preferredSize: const Size.fromHeight(4),
           child: LinearProgressIndicator(
             value: progress,
-            backgroundColor: const Color(0xFFE2E8F0),
-            valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+            backgroundColor: const Color(0xFFE9EAF4),
+            valueColor: const AlwaysStoppedAnimation<Color>(
+              AppTheme.primaryColor,
+            ),
           ),
         ),
       ),
@@ -153,7 +159,7 @@ class _QuizScreenState extends State<QuizScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: const BoxDecoration(
             color: Colors.white,
-            border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
+            border: Border(top: BorderSide(color: Color(0xFFE9EAF4))),
           ),
           child: Row(
             children: [
@@ -163,7 +169,9 @@ class _QuizScreenState extends State<QuizScreen> {
                     onPressed: _previousQuestion,
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 13),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                     child: const Text('Previous'),
                   ),
@@ -177,10 +185,14 @@ class _QuizScreenState extends State<QuizScreen> {
                     backgroundColor: AppTheme.primaryColor,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 13),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                   child: Text(
-                    _currentIndex == totalQuestions - 1 ? 'Finish Exam' : 'Next Question',
+                    _currentIndex == totalQuestions - 1
+                        ? 'Finish Exam'
+                        : 'Next Question',
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),
@@ -195,203 +207,228 @@ class _QuizScreenState extends State<QuizScreen> {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 900),
             child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Question Card
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.02),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'QUESTION ${_currentIndex + 1} OF $totalQuestions',
-                        style: const TextStyle(
-                          color: AppTheme.primaryColor,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                          letterSpacing: 0.5,
-                        ),
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Question Card
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFE9EAF4)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.02),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF1F5F9),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          question.level,
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF475569),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'QUESTION ${_currentIndex + 1} OF $totalQuestions',
+                            style: const TextStyle(
+                              color: AppTheme.primaryColor,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                              letterSpacing: 0.5,
+                            ),
                           ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF1F5F9),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              question.level,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF475569),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      Text(
+                        question.prompt,
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF252B4A),
+                          height: 1.4,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 14),
-                  Text(
-                    question.prompt,
-                    style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF0F172A),
-                      height: 1.4,
+                ),
+                const SizedBox(height: 20),
+
+                // 4 Option Choices
+                ...List.generate(question.options.length, (optIdx) {
+                  final optionText = question.options[optIdx];
+                  final isSelected = selectedOption == optIdx;
+                  final isCorrect = question.correctIndex == optIdx;
+
+                  Color borderColor = const Color(0xFFE9EAF4);
+                  Color bgColor = Colors.white;
+                  Color textColor = const Color(0xFF1E293B);
+                  IconData? icon;
+
+                  if (_showExplanation) {
+                    if (isCorrect) {
+                      borderColor = Colors.green;
+                      bgColor = const Color(0xFFF0FDF4);
+                      textColor = const Color(0xFF166534);
+                      icon = Icons.check_circle;
+                    } else if (isSelected) {
+                      borderColor = Colors.red;
+                      bgColor = const Color(0xFFFEF2F2);
+                      textColor = const Color(0xFF991B1B);
+                      icon = Icons.cancel;
+                    }
+                  } else if (isSelected) {
+                    borderColor = AppTheme.primaryColor;
+                    bgColor = AppTheme.primaryColor.withValues(alpha: 0.05);
+                  }
+
+                  final letters = ['A', 'B', 'C', 'D'];
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    child: InkWell(
+                      onTap: () => _selectOption(optIdx),
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
+                        decoration: BoxDecoration(
+                          color: bgColor,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: borderColor,
+                            width: isSelected || (_showExplanation && isCorrect)
+                                ? 2
+                                : 1,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? (_showExplanation
+                                          ? (isCorrect
+                                                ? Colors.green
+                                                : Colors.red)
+                                          : AppTheme.primaryColor)
+                                    : const Color(0xFFF1F5F9),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                letters[optIdx],
+                                style: TextStyle(
+                                  color: isSelected
+                                      ? Colors.white
+                                      : const Color(0xFF475569),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Text(
+                                optionText,
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  color: textColor,
+                                  fontWeight: isSelected
+                                      ? FontWeight.w600
+                                      : FontWeight.normal,
+                                ),
+                              ),
+                            ),
+                            if (icon != null) ...[
+                              const SizedBox(width: 8),
+                              Icon(
+                                icon,
+                                color: isCorrect ? Colors.green : Colors.red,
+                                size: 20,
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+
+                if (_showExplanation) ...[
+                  const SizedBox(height: 12),
+                  _buildArabicGrammarCoach(question),
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF0FDF4),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFBBF7D0)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Row(
+                          children: [
+                            Icon(
+                              Icons.lightbulb_outline,
+                              color: Color(0xFF15803D),
+                              size: 18,
+                            ),
+                            SizedBox(width: 6),
+                            Text(
+                              'English Explanation / التوضيح الإنجليزي',
+                              style: TextStyle(
+                                color: Color(0xFF15803D),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          question.explanation,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: Color(0xFF166534),
+                            height: 1.45,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // 4 Option Choices
-            ...List.generate(question.options.length, (optIdx) {
-              final optionText = question.options[optIdx];
-              final isSelected = selectedOption == optIdx;
-              final isCorrect = question.correctIndex == optIdx;
-
-              Color borderColor = const Color(0xFFE2E8F0);
-              Color bgColor = Colors.white;
-              Color textColor = const Color(0xFF1E293B);
-              IconData? icon;
-
-              if (_showExplanation) {
-                if (isCorrect) {
-                  borderColor = Colors.green;
-                  bgColor = const Color(0xFFF0FDF4);
-                  textColor = const Color(0xFF166534);
-                  icon = Icons.check_circle;
-                } else if (isSelected) {
-                  borderColor = Colors.red;
-                  bgColor = const Color(0xFFFEF2F2);
-                  textColor = const Color(0xFF991B1B);
-                  icon = Icons.cancel;
-                }
-              } else if (isSelected) {
-                borderColor = AppTheme.primaryColor;
-                bgColor = AppTheme.primaryColor.withValues(alpha: 0.05);
-              }
-
-              final letters = ['A', 'B', 'C', 'D'];
-
-              return Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                child: InkWell(
-                  onTap: () => _selectOption(optIdx),
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    decoration: BoxDecoration(
-                      color: bgColor,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: borderColor, width: isSelected || (_showExplanation && isCorrect) ? 2 : 1),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? (_showExplanation
-                                    ? (isCorrect ? Colors.green : Colors.red)
-                                    : AppTheme.primaryColor)
-                                : const Color(0xFFF1F5F9),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          alignment: Alignment.center,
-                          child: Text(
-                            letters[optIdx],
-                            style: TextStyle(
-                              color: isSelected ? Colors.white : const Color(0xFF475569),
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Text(
-                            optionText,
-                            style: TextStyle(
-                              fontSize: 15,
-                              color: textColor,
-                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                            ),
-                          ),
-                        ),
-                        if (icon != null) ...[
-                          const SizedBox(width: 8),
-                          Icon(icon, color: isCorrect ? Colors.green : Colors.red, size: 20),
-                        ],
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            }),
-
-            if (_showExplanation) ...[
-              const SizedBox(height: 12),
-              _buildArabicGrammarCoach(question),
-              const SizedBox(height: 10),
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF0FDF4),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFBBF7D0)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Row(
-                      children: [
-                        Icon(Icons.lightbulb_outline, color: Color(0xFF15803D), size: 18),
-                        SizedBox(width: 6),
-                        Text(
-                          'English Explanation / التوضيح الإنجليزي',
-                          style: TextStyle(
-                            color: Color(0xFF15803D),
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      question.explanation,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: Color(0xFF166534),
-                        height: 1.45,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ],
-        ),
+              ],
             ),
           ),
+        ),
       ),
     );
   }
@@ -423,7 +460,10 @@ class _QuizScreenState extends State<QuizScreen> {
                     color: AppTheme.primaryColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(11),
                   ),
-                  child: const Icon(Icons.auto_stories_rounded, color: AppTheme.primaryColor),
+                  child: const Icon(
+                    Icons.auto_stories_rounded,
+                    color: AppTheme.primaryColor,
+                  ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -436,7 +476,14 @@ class _QuizScreenState extends State<QuizScreen> {
                     ),
                   ),
                 ),
-                const Text('شرح فوري', style: TextStyle(color: Color(0xFF6366F1), fontSize: 11, fontWeight: FontWeight.w700)),
+                const Text(
+                  'شرح فوري',
+                  style: TextStyle(
+                    color: Color(0xFF6366F1),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 13),
@@ -445,7 +492,11 @@ class _QuizScreenState extends State<QuizScreen> {
                   ? question.explanationArabic
                   : 'راجع الفاعل والزمن وتركيب الجملة. بعد الأفعال المساعدة مثل do وdoes وdid نستخدم الفعل في المصدر، أما التصريف الثالث فيأتي في الأزمنة التامة والمبني للمجهول.',
               textAlign: TextAlign.right,
-              style: const TextStyle(fontSize: 14, height: 1.75, color: Color(0xFF334155)),
+              style: const TextStyle(
+                fontSize: 14,
+                height: 1.75,
+                color: Color(0xFF334155),
+              ),
             ),
             if (question.verbFormsArabic.isNotEmpty) ...[
               const SizedBox(height: 14),
@@ -459,14 +510,26 @@ class _QuizScreenState extends State<QuizScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('تصريفات مهمة', style: TextStyle(fontSize: 12, color: Color(0xFF6366F1), fontWeight: FontWeight.w800)),
+                    const Text(
+                      'تصريفات مهمة',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF6366F1),
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
                     const SizedBox(height: 6),
                     Directionality(
                       textDirection: TextDirection.ltr,
                       child: SelectableText(
                         question.verbFormsArabic,
                         textAlign: TextAlign.left,
-                        style: const TextStyle(fontSize: 13, height: 1.55, color: Color(0xFF1E293B), fontWeight: FontWeight.w600),
+                        style: const TextStyle(
+                          fontSize: 13,
+                          height: 1.55,
+                          color: Color(0xFF1E293B),
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ],
@@ -475,25 +538,53 @@ class _QuizScreenState extends State<QuizScreen> {
             ],
             if (examples.isNotEmpty) ...[
               const SizedBox(height: 14),
-              const Text('أمثلة تطبيقية', style: TextStyle(fontSize: 12, color: Color(0xFF6366F1), fontWeight: FontWeight.w800)),
-              const SizedBox(height: 8),
-              ...examples.map((example) => Container(
-                width: double.infinity,
-                margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.all(11),
-                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.82), borderRadius: BorderRadius.circular(11)),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Directionality(
-                      textDirection: TextDirection.ltr,
-                      child: Text(example.english, textAlign: TextAlign.left, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF1E293B))),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(example.arabic, textAlign: TextAlign.right, style: const TextStyle(fontSize: 12, height: 1.55, color: Color(0xFF64748B))),
-                  ],
+              const Text(
+                'أمثلة تطبيقية',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFF6366F1),
+                  fontWeight: FontWeight.w800,
                 ),
-              )),
+              ),
+              const SizedBox(height: 8),
+              ...examples.map(
+                (example) => Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(11),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.82),
+                    borderRadius: BorderRadius.circular(11),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Directionality(
+                        textDirection: TextDirection.ltr,
+                        child: Text(
+                          example.english,
+                          textAlign: TextAlign.left,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF1E293B),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        example.arabic,
+                        textAlign: TextAlign.right,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          height: 1.55,
+                          color: Color(0xFF73788E),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ],
         ),
@@ -521,9 +612,12 @@ class _QuizScreenState extends State<QuizScreen> {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: const Color(0xFFFCFCFF),
       appBar: AppBar(
-        title: const Text('Exam Summary & Review', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Exam Summary & Review',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         backgroundColor: Colors.white,
         elevation: 0,
         foregroundColor: const Color(0xFF1E293B),
@@ -536,184 +630,229 @@ class _QuizScreenState extends State<QuizScreen> {
             constraints: const BoxConstraints(maxWidth: 900),
             child: Column(
               children: [
-            // Score Banner
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-              ),
-              child: Column(
-                children: [
-                  Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: scoreColor.withValues(alpha: 0.1),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      '$percentage%',
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: scoreColor,
-                      ),
-                    ),
+                // Score Banner
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: const Color(0xFFE9EAF4)),
                   ),
-                  const SizedBox(height: 16),
-                  Text(
-                    gradeTitle,
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    gradeArabic,
-                    style: const TextStyle(fontSize: 14, color: Color(0xFF64748B)),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  child: Column(
                     children: [
-                      _buildSummaryStat('Correct', '$correct / $total', Colors.green),
-                      const SizedBox(width: 24),
-                      _buildSummaryStat('Incorrect', '${total - correct}', Colors.red),
-                      const SizedBox(width: 24),
-                      _buildSummaryStat('Time', _formatTime(_elapsedSeconds), const Color(0xFF1E293B)),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // Action Buttons
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    child: const Text('Back to Hub'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      setState(() {
-                        _currentIndex = 0;
-                        _userAnswers.clear();
-                        _showExplanation = false;
-                        _quizFinished = false;
-                        _elapsedSeconds = 0;
-                      });
-                      _startTimer();
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primaryColor,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    child: const Text('Retake Test'),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-
-            // Full 50-Question Review Header
-            const Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'Complete 50-Question Review',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // All 50 Questions Detailed Review
-            ...List.generate(total, (qIdx) {
-              final q = widget.quiz.questions[qIdx];
-              final userChoice = _userAnswers[qIdx];
-              final isCorrect = userChoice == q.correctIndex;
-
-              return Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: isCorrect ? const Color(0xFFBBF7D0) : const Color(0xFFFECACA),
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          isCorrect ? Icons.check_circle : Icons.cancel,
-                          color: isCorrect ? Colors.green : Colors.red,
-                          size: 20,
+                      Container(
+                        width: 100,
+                        height: 100,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: scoreColor.withValues(alpha: 0.1),
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Q${qIdx + 1}: ${q.prompt}',
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                        alignment: Alignment.center,
+                        child: Text(
+                          '$percentage%',
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: scoreColor,
                           ),
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    if (userChoice != null && !isCorrect)
+                      ),
+                      const SizedBox(height: 16),
                       Text(
-                        'Your Answer: ${q.options[userChoice]}',
-                        style: const TextStyle(color: Colors.red, fontSize: 13),
-                      ),
-                    Text(
-                      'Correct Answer: ${q.options[q.correctIndex]}',
-                      style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 13),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      q.explanation,
-                      style: const TextStyle(color: Color(0xFF64748B), fontSize: 12),
-                    ),
-                    if (q.explanationArabic.isNotEmpty) ...[
-                      const SizedBox(height: 8),
-                      Directionality(
-                        textDirection: TextDirection.rtl,
-                        child: Text(
-                          q.explanationArabic,
-                          textAlign: TextAlign.right,
-                          style: const TextStyle(color: Color(0xFF334155), fontSize: 12, height: 1.6),
+                        gradeTitle,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                    ],
-                    if (q.verbFormsArabic.isNotEmpty) ...[
-                      const SizedBox(height: 6),
-                      Directionality(
-                        textDirection: TextDirection.ltr,
-                        child: Text(
-                          q.verbFormsArabic,
-                          style: const TextStyle(color: AppTheme.primaryColor, fontSize: 11, fontWeight: FontWeight.w600),
+                      const SizedBox(height: 4),
+                      Text(
+                        gradeArabic,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFF73788E),
                         ),
                       ),
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          _buildSummaryStat(
+                            'Correct',
+                            '$correct / $total',
+                            Colors.green,
+                          ),
+                          const SizedBox(width: 24),
+                          _buildSummaryStat(
+                            'Incorrect',
+                            '${total - correct}',
+                            Colors.red,
+                          ),
+                          const SizedBox(width: 24),
+                          _buildSummaryStat(
+                            'Time',
+                            _formatTime(_elapsedSeconds),
+                            const Color(0xFF1E293B),
+                          ),
+                        ],
+                      ),
                     ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Action Buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text('Back to Hub'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          setState(() {
+                            _currentIndex = 0;
+                            _userAnswers.clear();
+                            _showExplanation = false;
+                            _quizFinished = false;
+                            _elapsedSeconds = 0;
+                          });
+                          _startTimer();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryColor,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text('Retake Test'),
+                      ),
+                    ),
                   ],
                 ),
-              );
-            }),
+                const SizedBox(height: 24),
+
+                // Full 50-Question Review Header
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Complete 50-Question Review',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // All 50 Questions Detailed Review
+                ...List.generate(total, (qIdx) {
+                  final q = widget.quiz.questions[qIdx];
+                  final userChoice = _userAnswers[qIdx];
+                  final isCorrect = userChoice == q.correctIndex;
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: isCorrect
+                            ? const Color(0xFFBBF7D0)
+                            : const Color(0xFFFECACA),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              isCorrect ? Icons.check_circle : Icons.cancel,
+                              color: isCorrect ? Colors.green : Colors.red,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Q${qIdx + 1}: ${q.prompt}',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        if (userChoice != null && !isCorrect)
+                          Text(
+                            'Your Answer: ${q.options[userChoice]}',
+                            style: const TextStyle(
+                              color: Colors.red,
+                              fontSize: 13,
+                            ),
+                          ),
+                        Text(
+                          'Correct Answer: ${q.options[q.correctIndex]}',
+                          style: const TextStyle(
+                            color: Colors.green,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          q.explanation,
+                          style: const TextStyle(
+                            color: Color(0xFF73788E),
+                            fontSize: 12,
+                          ),
+                        ),
+                        if (q.explanationArabic.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          Directionality(
+                            textDirection: TextDirection.rtl,
+                            child: Text(
+                              q.explanationArabic,
+                              textAlign: TextAlign.right,
+                              style: const TextStyle(
+                                color: Color(0xFF334155),
+                                fontSize: 12,
+                                height: 1.6,
+                              ),
+                            ),
+                          ),
+                        ],
+                        if (q.verbFormsArabic.isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          Directionality(
+                            textDirection: TextDirection.ltr,
+                            child: Text(
+                              q.verbFormsArabic,
+                              style: const TextStyle(
+                                color: AppTheme.primaryColor,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  );
+                }),
               ],
             ),
           ),
@@ -727,11 +866,15 @@ class _QuizScreenState extends State<QuizScreen> {
       children: [
         Text(
           value,
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: color),
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
         ),
         Text(
           label,
-          style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+          style: const TextStyle(fontSize: 12, color: Color(0xFF73788E)),
         ),
       ],
     );

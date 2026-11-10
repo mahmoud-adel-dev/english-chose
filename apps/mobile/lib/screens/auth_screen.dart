@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../config/theme.dart';
 import '../providers/app_provider.dart';
 import '../widgets/google_sign_in_button.dart';
+import '../widgets/coach_illustration.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -67,7 +68,7 @@ class _AuthScreenState extends State<AuthScreen> {
         provider.googleAuthConfig?['webClientId']?.toString() ?? '';
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F7FC),
+      backgroundColor: AppTheme.backgroundColor,
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -91,7 +92,7 @@ class _AuthScreenState extends State<AuthScreen> {
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(24),
-                          border: Border.all(color: const Color(0xFFE4E7F2)),
+                          border: Border.all(color: AppTheme.borderColor),
                           boxShadow: const [
                             BoxShadow(
                               color: Color(0x0D172554),
@@ -117,7 +118,7 @@ class _AuthScreenState extends State<AuthScreen> {
                                 style: const TextStyle(
                                   fontSize: 23,
                                   fontWeight: FontWeight.w800,
-                                  color: Color(0xFF111827),
+                                  color: AppTheme.inkColor,
                                 ),
                               ),
                               const SizedBox(height: 6),
@@ -223,46 +224,29 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   Widget _buildBrandHeader() {
-    return Column(
+    return const Column(
       children: [
-        Container(
-          width: 68,
-          height: 68,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFF5B4CE3), Color(0xFF4032C8)],
-            ),
-            borderRadius: BorderRadius.circular(21),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x405B4CE3),
-                blurRadius: 20,
-                offset: Offset(0, 8),
-              ),
-            ],
-          ),
-          child: const Icon(
-            Icons.school_rounded,
-            color: Colors.white,
-            size: 34,
-          ),
-        ),
-        const SizedBox(height: 15),
-        const Text(
+        CoachIllustration(size: 185),
+        SizedBox(height: 4),
+        Text(
           'English Coach AI',
           style: TextStyle(
-            fontSize: 26,
-            fontWeight: FontWeight.w900,
-            letterSpacing: -0.5,
-            color: Color(0xFF111827),
+            fontSize: 25,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -.6,
+            color: AppTheme.inkColor,
           ),
         ),
-        const SizedBox(height: 5),
-        const Text(
-          'Speak better. Learn smarter.',
-          style: TextStyle(color: Color(0xFF667085), fontSize: 14),
+        SizedBox(height: 6),
+        Text(
+          'A calm space for a stronger voice.',
+          style: TextStyle(color: AppTheme.mutedColor, fontSize: 12),
+        ),
+        SizedBox(height: 5),
+        Text(
+          'اتعلم براحتك. اتقدم بطريقتك.',
+          textDirection: TextDirection.rtl,
+          style: TextStyle(color: AppTheme.accentColor, fontSize: 11),
         ),
       ],
     );

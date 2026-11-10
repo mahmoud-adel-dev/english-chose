@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../config/theme.dart';
+import '../../widgets/learning_banner.dart';
 import '../../models/conversation.dart';
 import '../../providers/app_provider.dart';
 import '../../services/stt_service.dart';
@@ -16,7 +17,8 @@ class ConversationCoachScreen extends StatefulWidget {
   const ConversationCoachScreen({super.key, required this.onBackToHome});
 
   @override
-  State<ConversationCoachScreen> createState() => _ConversationCoachScreenState();
+  State<ConversationCoachScreen> createState() =>
+      _ConversationCoachScreenState();
 }
 
 class _ConversationCoachScreenState extends State<ConversationCoachScreen>
@@ -193,7 +195,9 @@ class _ConversationCoachScreenState extends State<ConversationCoachScreen>
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryColor,
+            ),
             child: const Text('إنهاء وتقييم'),
           ),
         ],
@@ -220,31 +224,44 @@ class _ConversationCoachScreenState extends State<ConversationCoachScreen>
           children: [
             Row(
               children: [
-                const Text(
-                  'Coach Alex 🤖',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                const Expanded(
+                  child: Text(
+                    'Coach Alex',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
                 ),
                 const SizedBox(width: 8),
                 if (session != null)
                   LevelBadge(
                     level: session.targetLevel,
                     fontSize: 11,
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
                   ),
               ],
             ),
             const Text(
-              'Real-Time Conversational Practice & Self-Development',
-              style: TextStyle(fontSize: 10.5, color: Color(0xFF64748B)),
+              'Conversation, at your pace.',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 10.5, color: Color(0xFF73788E)),
             ),
           ],
         ),
         actions: [
           IconButton(
-            tooltip: _autoPlayAudio ? 'Auto-play Audio (ON)' : 'Auto-play Audio (OFF)',
+            tooltip: _autoPlayAudio
+                ? 'Auto-play Audio (ON)'
+                : 'Auto-play Audio (OFF)',
             icon: Icon(
               _autoPlayAudio
-                  ? (_isTtsSpeaking ? Icons.volume_up_rounded : Icons.volume_down_rounded)
+                  ? (_isTtsSpeaking
+                        ? Icons.volume_up_rounded
+                        : Icons.volume_down_rounded)
                   : Icons.volume_off_rounded,
               color: _autoPlayAudio ? AppTheme.primaryColor : Colors.grey,
             ),
@@ -256,17 +273,14 @@ class _ConversationCoachScreenState extends State<ConversationCoachScreen>
             },
           ),
           if (session != null && session.status == 'ACTIVE' && report == null)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
-              child: ElevatedButton.icon(
-                onPressed: provider.isConversationLoading ? null : _finishConversation,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF10B981),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                ),
-                icon: const Icon(Icons.flag_rounded, size: 16),
-                label: const Text('إنهاء وتقييم 🏆', style: TextStyle(fontSize: 12)),
+            IconButton(
+              tooltip: 'إنهاء المحادثة والتقييم',
+              onPressed: provider.isConversationLoading
+                  ? null
+                  : _finishConversation,
+              icon: const Icon(
+                Icons.flag_outlined,
+                color: AppTheme.primaryColor,
               ),
             ),
         ],
@@ -277,8 +291,8 @@ class _ConversationCoachScreenState extends State<ConversationCoachScreen>
           child: report != null
               ? _buildReportView(report, provider)
               : session == null && provider.isConversationLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _buildChatInterface(session, provider),
+              ? const Center(child: CircularProgressIndicator())
+              : _buildChatInterface(session, provider),
         ),
       ),
     );
@@ -287,8 +301,12 @@ class _ConversationCoachScreenState extends State<ConversationCoachScreen>
   // ===========================================================================
   // CHAT INTERFACE
   // ===========================================================================
-  Widget _buildChatInterface(ConversationSessionModel? session, AppProvider provider) {
+  Widget _buildChatInterface(
+    ConversationSessionModel? session,
+    AppProvider provider,
+  ) {
     final messages = session?.messages ?? [];
+    final hasIntro = messages.length <= 1;
 
     return Column(
       children: [
@@ -297,12 +315,25 @@ class _ConversationCoachScreenState extends State<ConversationCoachScreen>
           child: ListView.builder(
             controller: _scrollController,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            itemCount: messages.length + (provider.isConversationSending ? 1 : 0),
+            itemCount:
+                messages.length +
+                (provider.isConversationSending ? 1 : 0) +
+                (hasIntro ? 1 : 0),
             itemBuilder: (context, index) {
-              if (index >= messages.length) {
+              if (hasIntro && index == 0) {
+                return const Padding(
+                  padding: EdgeInsets.only(bottom: 16),
+                  child: LearningBanner(
+                    title: 'A conversation, at your pace.',
+                    subtitle: 'خد راحتك. كل محاولة كلام بتفرق.',
+                  ),
+                );
+              }
+              final messageIndex = index - (hasIntro ? 1 : 0);
+              if (messageIndex >= messages.length) {
                 return _buildTypingIndicator();
               }
-              final msg = messages[index];
+              final msg = messages[messageIndex];
               return _buildMessageBubble(msg);
             },
           ),
@@ -319,7 +350,9 @@ class _ConversationCoachScreenState extends State<ConversationCoachScreen>
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    _liveTranscript.isEmpty ? 'Listening... Speak in English' : _liveTranscript,
+                    _liveTranscript.isEmpty
+                        ? 'Listening... Speak in English'
+                        : _liveTranscript,
                     style: const TextStyle(
                       color: Color(0xFF92400E),
                       fontWeight: FontWeight.w600,
@@ -343,25 +376,36 @@ class _ConversationCoachScreenState extends State<ConversationCoachScreen>
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Column(
-        crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        crossAxisAlignment: isUser
+            ? CrossAxisAlignment.end
+            : CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+            mainAxisAlignment: isUser
+                ? MainAxisAlignment.end
+                : MainAxisAlignment.start,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (!isUser) ...[
                 CircleAvatar(
                   radius: 16,
-                  backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.15),
+                  backgroundColor: AppTheme.primaryColor.withValues(
+                    alpha: 0.15,
+                  ),
                   child: const Text('🤖', style: TextStyle(fontSize: 16)),
                 ),
                 const SizedBox(width: 8),
               ],
               Flexible(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
                   decoration: BoxDecoration(
-                    color: isUser ? AppTheme.primaryColor : const Color(0xFFF1F5F9),
+                    color: isUser
+                        ? AppTheme.primaryColor
+                        : const Color(0xFFF1F5F9),
                     borderRadius: BorderRadius.only(
                       topLeft: const Radius.circular(16),
                       topRight: const Radius.circular(16),
@@ -378,7 +422,9 @@ class _ConversationCoachScreenState extends State<ConversationCoachScreen>
                         style: TextStyle(
                           fontSize: 14.5,
                           height: 1.4,
-                          color: isUser ? Colors.white : const Color(0xFF0F172A),
+                          color: isUser
+                              ? Colors.white
+                              : const Color(0xFF252B4A),
                         ),
                       ),
                       if (!isUser) ...[
@@ -387,7 +433,10 @@ class _ConversationCoachScreenState extends State<ConversationCoachScreen>
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             IconButton(
-                              icon: const Icon(Icons.volume_up_rounded, size: 18),
+                              icon: const Icon(
+                                Icons.volume_up_rounded,
+                                size: 18,
+                              ),
                               color: AppTheme.primaryColor,
                               constraints: const BoxConstraints(),
                               padding: const EdgeInsets.only(right: 8),
@@ -395,12 +444,16 @@ class _ConversationCoachScreenState extends State<ConversationCoachScreen>
                               onPressed: () => _tts.speak(msg.content),
                             ),
                             IconButton(
-                              icon: const Icon(Icons.slow_motion_video_rounded, size: 16),
-                              color: const Color(0xFF64748B),
+                              icon: const Icon(
+                                Icons.slow_motion_video_rounded,
+                                size: 16,
+                              ),
+                              color: const Color(0xFF73788E),
                               constraints: const BoxConstraints(),
                               padding: EdgeInsets.zero,
                               tooltip: 'Listen slowly (0.5x)',
-                              onPressed: () => _tts.speakAtSpeed(msg.content, 0.25),
+                              onPressed: () =>
+                                  _tts.speakAtSpeed(msg.content, 0.25),
                             ),
                           ],
                         ),
@@ -413,8 +466,12 @@ class _ConversationCoachScreenState extends State<ConversationCoachScreen>
                 const SizedBox(width: 8),
                 CircleAvatar(
                   radius: 16,
-                  backgroundColor: const Color(0xFFE2E8F0),
-                  child: const Icon(Icons.person, size: 18, color: Color(0xFF475569)),
+                  backgroundColor: const Color(0xFFE9EAF4),
+                  child: const Icon(
+                    Icons.person,
+                    size: 18,
+                    color: Color(0xFF475569),
+                  ),
                 ),
               ],
             ],
@@ -485,7 +542,7 @@ class _ConversationCoachScreenState extends State<ConversationCoachScreen>
                 SizedBox(width: 8),
                 Text(
                   'Coach Alex is thinking...',
-                  style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                  style: TextStyle(fontSize: 12, color: Color(0xFF73788E)),
                 ),
               ],
             ),
@@ -500,38 +557,36 @@ class _ConversationCoachScreenState extends State<ConversationCoachScreen>
       padding: const EdgeInsets.all(12),
       decoration: const BoxDecoration(
         color: Colors.white,
-        border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
+        border: Border(top: BorderSide(color: Color(0xFFE9EAF4))),
       ),
       child: Column(
         children: [
-          // Mode Toggle
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              SegmentedButton<bool>(
-                segments: const [
-                  ButtonSegment<bool>(
-                    value: true,
-                    icon: Icon(Icons.mic_rounded, size: 16),
-                    label: Text('Voice Mode (صوت)'),
-                  ),
-                  ButtonSegment<bool>(
-                    value: false,
-                    icon: Icon(Icons.keyboard_rounded, size: 16),
-                    label: Text('Text Mode (كتابة)'),
-                  ),
-                ],
-                selected: {_isVoiceMode},
-                onSelectionChanged: (val) {
-                  setState(() => _isVoiceMode = val.first);
-                  if (_isSttListening) _stt.stopListening();
-                },
-                style: ButtonStyle(
-                  visualDensity: VisualDensity.compact,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
+          // Keep the mode selector constrained on narrow phones and large text.
+          SegmentedButton<bool>(
+            expandedInsets: EdgeInsets.zero,
+            segments: const [
+              ButtonSegment<bool>(
+                value: true,
+                icon: Icon(Icons.mic_rounded, size: 16),
+                label: Text('Voice'),
+                tooltip: 'إجابة صوتية',
+              ),
+              ButtonSegment<bool>(
+                value: false,
+                icon: Icon(Icons.keyboard_rounded, size: 16),
+                label: Text('Text'),
+                tooltip: 'إجابة مكتوبة',
               ),
             ],
+            selected: {_isVoiceMode},
+            onSelectionChanged: (val) {
+              setState(() => _isVoiceMode = val.first);
+              if (_isSttListening) _stt.stopListening();
+            },
+            style: const ButtonStyle(
+              visualDensity: VisualDensity.compact,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
           ),
           const SizedBox(height: 10),
 
@@ -545,7 +600,9 @@ class _ConversationCoachScreenState extends State<ConversationCoachScreen>
                     animation: _pulseController,
                     builder: (context, child) {
                       final scale = _isSttListening
-                          ? 1.0 + (_pulseController.value * 0.1) + (_soundLevel.clamp(0.0, 1.0) * 0.1)
+                          ? 1.0 +
+                                (_pulseController.value * 0.1) +
+                                (_soundLevel.clamp(0.0, 1.0) * 0.1)
                           : 1.0;
                       return Transform.scale(
                         scale: scale,
@@ -554,18 +611,25 @@ class _ConversationCoachScreenState extends State<ConversationCoachScreen>
                           height: 68,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: _isSttListening ? const Color(0xFFEF4444) : AppTheme.primaryColor,
+                            color: _isSttListening
+                                ? const Color(0xFFEF4444)
+                                : AppTheme.primaryColor,
                             boxShadow: [
                               BoxShadow(
-                                color: (_isSttListening ? const Color(0xFFEF4444) : AppTheme.primaryColor)
-                                    .withValues(alpha: 0.3),
+                                color:
+                                    (_isSttListening
+                                            ? const Color(0xFFEF4444)
+                                            : AppTheme.primaryColor)
+                                        .withValues(alpha: 0.3),
                                 blurRadius: 16,
                                 spreadRadius: _isSttListening ? 6 : 2,
                               ),
                             ],
                           ),
                           child: Icon(
-                            _isSttListening ? Icons.stop_rounded : Icons.mic_rounded,
+                            _isSttListening
+                                ? Icons.stop_rounded
+                                : Icons.mic_rounded,
                             color: Colors.white,
                             size: 32,
                           ),
@@ -579,7 +643,10 @@ class _ConversationCoachScreenState extends State<ConversationCoachScreen>
                   _isSttListening
                       ? 'Listening... Tap to finish & send'
                       : 'Tap mic and speak English to Coach Alex',
-                  style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF73788E),
+                  ),
                 ),
               ],
             )
@@ -594,17 +661,23 @@ class _ConversationCoachScreenState extends State<ConversationCoachScreen>
                     onSubmitted: (_) => _sendMessage(),
                     decoration: InputDecoration(
                       hintText: 'Type your English message to Alex...',
-                      hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
+                      hintStyle: const TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFF94A3B8),
+                      ),
                       filled: true,
-                      fillColor: const Color(0xFFF8FAFC),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      fillColor: const Color(0xFFFCFCFF),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(24),
                         borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(24),
-                        borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                        borderSide: const BorderSide(color: Color(0xFFE9EAF4)),
                       ),
                     ),
                   ),
@@ -612,8 +685,12 @@ class _ConversationCoachScreenState extends State<ConversationCoachScreen>
                 const SizedBox(width: 8),
                 IconButton.filled(
                   icon: const Icon(Icons.send_rounded, size: 20),
-                  style: IconButton.styleFrom(backgroundColor: AppTheme.primaryColor),
-                  onPressed: provider.isConversationSending ? null : _sendMessage,
+                  style: IconButton.styleFrom(
+                    backgroundColor: AppTheme.primaryColor,
+                  ),
+                  onPressed: provider.isConversationSending
+                      ? null
+                      : _sendMessage,
                 ),
               ],
             ),
@@ -625,7 +702,10 @@ class _ConversationCoachScreenState extends State<ConversationCoachScreen>
   // ===========================================================================
   // REPORT VIEW
   // ===========================================================================
-  Widget _buildReportView(ConversationEvaluationReportModel report, AppProvider provider) {
+  Widget _buildReportView(
+    ConversationEvaluationReportModel report,
+    AppProvider provider,
+  ) {
     final levelColor = AppTheme.getLevelColor(report.assessedLevel);
 
     return SingleChildScrollView(
@@ -639,12 +719,16 @@ class _ConversationCoachScreenState extends State<ConversationCoachScreen>
               const Text(
                 '🏆 تقرير أداء المحادثة والتقييم الشامل',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF252B4A),
+                ),
               ),
               const SizedBox(height: 4),
               const Text(
                 'Comprehensive CEFR Conversation Diagnostic Report',
-                style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                style: TextStyle(fontSize: 12, color: Color(0xFF73788E)),
               ),
               const SizedBox(height: 20),
 
@@ -654,21 +738,36 @@ class _ConversationCoachScreenState extends State<ConversationCoachScreen>
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: levelColor.withValues(alpha: 0.12),
-                  border: Border.all(color: levelColor.withValues(alpha: 0.3), width: 2),
+                  border: Border.all(
+                    color: levelColor.withValues(alpha: 0.3),
+                    width: 2,
+                  ),
                 ),
                 child: Text(
                   report.assessedLevel,
-                  style: TextStyle(fontSize: 44, fontWeight: FontWeight.w900, color: levelColor),
+                  style: TextStyle(
+                    fontSize: 44,
+                    fontWeight: FontWeight.w900,
+                    color: levelColor,
+                  ),
                 ),
               ),
               const SizedBox(height: 8),
               Text(
                 'المستوى المحقق في المحادثة: Level ${report.assessedLevel}',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1E293B),
+                ),
               ),
               Text(
                 'الدرجة الكلية: ${report.overallScore.toStringAsFixed(1)} / 100',
-                style: const TextStyle(fontSize: 13, color: Color(0xFF64748B), fontWeight: FontWeight.w600),
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF73788E),
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               const SizedBox(height: 20),
 
@@ -691,21 +790,29 @@ class _ConversationCoachScreenState extends State<ConversationCoachScreen>
                 padding: const EdgeInsets.all(14),
                 width: double.infinity,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAFC),
+                  color: const Color(0xFFFCFCFF),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                  border: Border.all(color: const Color(0xFFE9EAF4)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
                       '📝 خلاصة تقييم الأداء:',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1E293B)),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                        color: Color(0xFF1E293B),
+                      ),
                     ),
                     const SizedBox(height: 6),
                     Text(
                       report.summaryArabic,
-                      style: const TextStyle(fontSize: 13, color: Color(0xFF334155), height: 1.5),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFF334155),
+                        height: 1.5,
+                      ),
                     ),
                   ],
                 ),
@@ -714,13 +821,21 @@ class _ConversationCoachScreenState extends State<ConversationCoachScreen>
 
               // Strengths
               if (report.strengthsArabic.isNotEmpty) ...[
-                _buildBulletList('🌟 نقاط القوة التي أظهرتها في المحادثة:', report.strengthsArabic, const Color(0xFF059669)),
+                _buildBulletList(
+                  '🌟 نقاط القوة التي أظهرتها في المحادثة:',
+                  report.strengthsArabic,
+                  const Color(0xFF059669),
+                ),
                 const SizedBox(height: 16),
               ],
 
               // Improvements
               if (report.areasForImprovementArabic.isNotEmpty) ...[
-                _buildBulletList('💡 نصائح عملية للتطوير والارتقاء بالمستوى:', report.areasForImprovementArabic, const Color(0xFF2563EB)),
+                _buildBulletList(
+                  '💡 نصائح عملية للتطوير والارتقاء بالمستوى:',
+                  report.areasForImprovementArabic,
+                  const Color(0xFF2563EB),
+                ),
                 const SizedBox(height: 16),
               ],
 
@@ -730,7 +845,11 @@ class _ConversationCoachScreenState extends State<ConversationCoachScreen>
                   alignment: Alignment.centerRight,
                   child: Text(
                     '🔍 سجل التصويبات والأخطاء (${report.allMistakes.length}):',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1E293B)),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                      color: Color(0xFF1E293B),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -748,7 +867,11 @@ class _ConversationCoachScreenState extends State<ConversationCoachScreen>
                       children: [
                         Row(
                           children: [
-                            const Icon(Icons.close, color: AppTheme.errorColor, size: 16),
+                            const Icon(
+                              Icons.close,
+                              color: AppTheme.errorColor,
+                              size: 16,
+                            ),
                             const SizedBox(width: 6),
                             Expanded(
                               child: Text(
@@ -765,7 +888,10 @@ class _ConversationCoachScreenState extends State<ConversationCoachScreen>
                         const SizedBox(height: 4),
                         Text(
                           m.explanation,
-                          style: const TextStyle(fontSize: 12, color: Color(0xFF7F1D1D)),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF7F1D1D),
+                          ),
                         ),
                       ],
                     ),
@@ -815,8 +941,8 @@ class _ConversationCoachScreenState extends State<ConversationCoachScreen>
     final color = score >= 80
         ? AppTheme.successColor
         : score >= 60
-            ? AppTheme.warningColor
-            : AppTheme.errorColor;
+        ? AppTheme.warningColor
+        : AppTheme.errorColor;
 
     return Expanded(
       child: Container(
@@ -830,13 +956,21 @@ class _ConversationCoachScreenState extends State<ConversationCoachScreen>
           children: [
             Text(
               '${score.toStringAsFixed(0)}%',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: color),
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+                color: color,
+              ),
             ),
             const SizedBox(height: 2),
             Text(
               label,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 9.5, color: Color(0xFF64748B), height: 1.1),
+              style: const TextStyle(
+                fontSize: 9.5,
+                color: Color(0xFF73788E),
+                height: 1.1,
+              ),
             ),
           ],
         ),
@@ -856,7 +990,14 @@ class _ConversationCoachScreenState extends State<ConversationCoachScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: dotColor)),
+          Text(
+            title,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 13,
+              color: dotColor,
+            ),
+          ),
           const SizedBox(height: 6),
           ...items.map(
             (it) => Padding(
@@ -864,9 +1005,23 @@ class _ConversationCoachScreenState extends State<ConversationCoachScreen>
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('• ', style: TextStyle(color: dotColor, fontWeight: FontWeight.bold, fontSize: 14)),
+                  Text(
+                    '• ',
+                    style: TextStyle(
+                      color: dotColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
                   Expanded(
-                    child: Text(it, style: const TextStyle(fontSize: 12.5, color: Color(0xFF334155), height: 1.4)),
+                    child: Text(
+                      it,
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        color: Color(0xFF334155),
+                        height: 1.4,
+                      ),
+                    ),
                   ),
                 ],
               ),
