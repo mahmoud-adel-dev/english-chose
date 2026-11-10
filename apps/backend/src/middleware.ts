@@ -49,11 +49,28 @@ function getAllowedOrigins(): Set<string> {
   return new Set(configured);
 }
 
+function isOriginAllowed(origin: string | null, allowedOrigins: Set<string>): boolean {
+  if (!origin) return true;
+  if (allowedOrigins.has("*") || allowedOrigins.has(origin)) return true;
+
+  try {
+    const url = new URL(origin);
+    // Allow localhost and local loopback on ANY port (for Flutter Web and local dev)
+    if (url.hostname === "localhost" || url.hostname === "127.0.0.1") {
+      return true;
+    }
+  } catch {
+    return false;
+  }
+
+  return false;
+}
+
 export function middleware(request: NextRequest) {
   const originHeader = request.headers.get("origin");
   const origin = originHeader ? normalizeOrigin(originHeader) : null;
   const allowedOrigins = getAllowedOrigins();
-  const originIsAllowed = !originHeader || (origin !== null && allowedOrigins.has(origin));
+  const originIsAllowed = isOriginAllowed(origin, allowedOrigins);
 
   if (request.method === "OPTIONS") {
     if (!originIsAllowed) {

@@ -83,18 +83,7 @@ class ApiService {
             'Connection timed out. Please check your network and try again.',
       );
     } catch (e) {
-      sw.stop();
-      LogService().logError(
-        method: 'GET',
-        url: url,
-        error: e.toString(),
-        statusCode: e is ApiException ? e.statusCode : 500,
-      );
-      if (e is ApiException) rethrow;
-      throw ApiException(
-        code: 'NETWORK_ERROR',
-        message: 'Failed to connect to server: $e',
-      );
+      throw _handleNetworkError(e, 'GET', url, sw);
     }
   }
 
@@ -130,18 +119,7 @@ class ApiService {
             'Connection timed out. Please check your network and try again.',
       );
     } catch (e) {
-      sw.stop();
-      LogService().logError(
-        method: 'POST',
-        url: url,
-        error: e.toString(),
-        statusCode: e is ApiException ? e.statusCode : 500,
-      );
-      if (e is ApiException) rethrow;
-      throw ApiException(
-        code: 'NETWORK_ERROR',
-        message: 'Failed to connect to server: $e',
-      );
+      throw _handleNetworkError(e, 'POST', url, sw);
     }
   }
 
@@ -177,18 +155,7 @@ class ApiService {
             'Connection timed out. Please check your network and try again.',
       );
     } catch (e) {
-      sw.stop();
-      LogService().logError(
-        method: 'PUT',
-        url: url,
-        error: e.toString(),
-        statusCode: e is ApiException ? e.statusCode : 500,
-      );
-      if (e is ApiException) rethrow;
-      throw ApiException(
-        code: 'NETWORK_ERROR',
-        message: 'Failed to connect to server: $e',
-      );
+      throw _handleNetworkError(e, 'PUT', url, sw);
     }
   }
 
@@ -223,19 +190,45 @@ class ApiService {
             'Connection timed out. Please check your network and try again.',
       );
     } catch (e) {
-      sw.stop();
-      LogService().logError(
-        method: 'DELETE',
-        url: url,
-        error: e.toString(),
-        statusCode: e is ApiException ? e.statusCode : 500,
-      );
-      if (e is ApiException) rethrow;
-      throw ApiException(
-        code: 'NETWORK_ERROR',
-        message: 'Failed to connect to server: $e',
-      );
+      throw _handleNetworkError(e, 'DELETE', url, sw);
     }
+  }
+
+  static ApiException _handleNetworkError(
+    Object e,
+    String method,
+    String url,
+    Stopwatch sw,
+  ) {
+    sw.stop();
+    LogService().logError(
+      method: method,
+      url: url,
+      error: e.toString(),
+      statusCode: e is ApiException ? e.statusCode : 500,
+    );
+    if (e is ApiException) return e;
+
+    final errLower = e.toString().toLowerCase();
+    String friendlyMessage;
+    if (errLower.contains('failed to fetch') ||
+        errLower.contains('clientexception') ||
+        errLower.contains('socketexception') ||
+        errLower.contains('connection refused') ||
+        errLower.contains('network is unreachable') ||
+        errLower.contains('handshakeexception')) {
+      friendlyMessage =
+          'Unable to connect to the server. Please check your internet connection and try again.';
+    } else {
+      friendlyMessage =
+          'Unable to connect to the server. Please try again later.';
+    }
+
+    return ApiException(
+      code: 'NETWORK_ERROR',
+      message: friendlyMessage,
+      details: e.toString(),
+    );
   }
 
   static dynamic _handleResponse(http.Response response) {
