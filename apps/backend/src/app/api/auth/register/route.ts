@@ -24,6 +24,7 @@ export async function POST(request: Request) {
     }
 
     const passwordHash = await hashPassword(password);
+    const trialEndsAt = new Date(Date.now() + 6 * 24 * 60 * 60 * 1000);
 
     const newUser = await prisma.$transaction(async (tx) => {
       const user = await tx.user.create({
@@ -32,6 +33,7 @@ export async function POST(request: Request) {
           name,
           passwordHash,
           role: "STUDENT",
+          trialEndsAt,
         },
       });
 
@@ -66,6 +68,10 @@ export async function POST(request: Request) {
         name: newUser.user.name,
         role: newUser.user.role,
         createdAt: newUser.user.createdAt.toISOString(),
+        trialEndsAt: trialEndsAt.toISOString(),
+        isTrialActive: true,
+        trialDaysRemaining: 6,
+        isSubscribed: false,
       },
       profile: {
         userId: newUser.profile.userId,

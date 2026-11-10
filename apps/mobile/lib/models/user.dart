@@ -4,6 +4,12 @@ class UserModel {
   final String name;
   final String role;
   final String createdAt;
+  final String? trialEndsAt;
+  final bool isTrialActive;
+  final int trialDaysRemaining;
+  final String? subscriptionTier;
+  final String? subscriptionExpiresAt;
+  final bool isSubscribed;
 
   UserModel({
     required this.id,
@@ -11,6 +17,12 @@ class UserModel {
     required this.name,
     required this.role,
     required this.createdAt,
+    this.trialEndsAt,
+    this.isTrialActive = true,
+    this.trialDaysRemaining = 6,
+    this.subscriptionTier,
+    this.subscriptionExpiresAt,
+    this.isSubscribed = false,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -20,6 +32,12 @@ class UserModel {
       name: json['name'] ?? '',
       role: json['role'] ?? 'STUDENT',
       createdAt: json['createdAt'] ?? '',
+      trialEndsAt: json['trialEndsAt'],
+      isTrialActive: json['isTrialActive'] ?? true,
+      trialDaysRemaining: (json['trialDaysRemaining'] as num?)?.toInt() ?? 6,
+      subscriptionTier: json['subscriptionTier'],
+      subscriptionExpiresAt: json['subscriptionExpiresAt'],
+      isSubscribed: json['isSubscribed'] ?? false,
     );
   }
 }

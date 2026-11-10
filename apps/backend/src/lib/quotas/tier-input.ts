@@ -8,6 +8,10 @@ const quotaTierInputSchema = z.object({
   maxAttemptsPerItem: z.number().int().min(1),
   requestsPerMinute: z.number().int().min(1),
   isActive: z.boolean(),
+  priceMonthlyEgp: z.number().int().nonnegative().optional(),
+  priceYearlyEgp: z.number().int().nonnegative().optional(),
+  description: z.string().optional().nullable(),
+  badge: z.string().optional().nullable(),
 });
 
 export type QuotaTierInput = z.infer<typeof quotaTierInputSchema>;

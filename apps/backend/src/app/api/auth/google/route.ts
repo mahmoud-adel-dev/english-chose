@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/auth/password";
 import { assertJwtConfiguration, signToken } from "@/lib/auth/jwt";
 import { decideGoogleAccountAction, verifyGoogleIdentity } from "@/lib/auth/google-auth";
+import { getUserSubscriptionStatus } from "@/lib/quotas/subscription-service";
 import { errorResponse, successResponse } from "../../_helpers";
 
 export async function POST(request: Request) {
@@ -37,6 +38,7 @@ export async function POST(request: Request) {
         });
       }
       const passwordHash = await hashPassword(randomBytes(32).toString("hex"));
+      const trialEndsAt = new Date(Date.now() + 6 * 24 * 60 * 60 * 1000);
       return tx.user.create({
         data: {
           email: identity.email,
@@ -45,15 +47,19 @@ export async function POST(request: Request) {
           googleSubject: identity.subject,
           authProvider: "GOOGLE",
           role: "STUDENT",
+          trialEndsAt,
           profile: { create: { currentLevel: "A1", targetLevel: "B2" } },
         },
         include: { profile: true },
       });
     });
 
-    const profile = user.profile ?? await prisma.learningProfile.create({
-      data: { userId: user.id, currentLevel: "A1", targetLevel: "B2" },
-    });
+    const [profile, subStatus] = await Promise.all([
+      user.profile ?? prisma.learningProfile.create({
+        data: { userId: user.id, currentLevel: "A1", targetLevel: "B2" },
+      }),
+      getUserSubscriptionStatus(user.id),
+    ]);
     const token = await signToken({ userId: user.id, email: user.email, role: user.role });
     return successResponse({
       token,
@@ -63,6 +69,12 @@ export async function POST(request: Request) {
         name: user.name,
         role: user.role,
         createdAt: user.createdAt.toISOString(),
+        trialEndsAt: subStatus.trialEndsAt.toISOString(),
+        isTrialActive: subStatus.isTrialActive,
+        trialDaysRemaining: subStatus.trialDaysRemaining,
+        subscriptionTier: subStatus.tierName,
+        subscriptionExpiresAt: subStatus.subscriptionExpiresAt?.toISOString() ?? null,
+        isSubscribed: subStatus.isSubscribed,
       },
       profile: {
         userId: profile.userId,

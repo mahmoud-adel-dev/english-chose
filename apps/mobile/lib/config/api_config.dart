@@ -19,6 +19,10 @@ class ApiConfig {
   static const String profile = '$baseUrl/profile';
   static const String quota = '$baseUrl/quota';
 
+  // Subscriptions & Plans
+  static const String subscriptionPlans = '$baseUrl/subscription/plans';
+  static const String subscriptionSubscribe = '$baseUrl/subscription/subscribe';
+
   // Daily Training Sessions
   static const String sessionStart = '$baseUrl/sessions/start';
   static const String sessionCurrent = '$baseUrl/sessions/current';

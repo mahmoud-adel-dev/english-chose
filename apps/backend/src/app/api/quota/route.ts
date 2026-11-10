@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { authenticateRequest, successResponse, errorResponse } from "../_helpers";
 import { QuotaUsageDto } from "@english-coach/contracts";
 import { resolveUserQuotaTier } from "@/lib/quotas/tier-resolver";
+import { getUserSubscriptionStatus } from "@/lib/quotas/subscription-service";
 
 export async function GET(request: Request) {
   try {
@@ -13,7 +14,10 @@ export async function GET(request: Request) {
     const now = new Date();
     const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
 
-    const tier = await resolveUserQuotaTier(auth.userId);
+    const [tier, subStatus] = await Promise.all([
+      resolveUserQuotaTier(auth.userId),
+      getUserSubscriptionStatus(auth.userId),
+    ]);
 
     const usage = await prisma.userQuotaUsage.findUnique({
       where: {
@@ -37,6 +41,12 @@ export async function GET(request: Request) {
       audioMinutesRemaining: Math.max(0, tier.maxAudioMinutesDay - audioMinutesUsed),
       tierName: tier.name,
       resetsAtUtc: tomorrow.toISOString(),
+      isTrialActive: subStatus.isTrialActive,
+      trialDaysRemaining: subStatus.trialDaysRemaining,
+      trialHoursRemaining: subStatus.trialHoursRemaining,
+      isSubscribed: subStatus.isSubscribed,
+      subscriptionExpiresAt: subStatus.subscriptionExpiresAt?.toISOString() ?? null,
+      canAccessAi: subStatus.canAccessAi,
     };
 
     return successResponse(quotaDto, 200);

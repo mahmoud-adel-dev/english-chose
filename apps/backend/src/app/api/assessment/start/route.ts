@@ -2,12 +2,22 @@ import { prisma } from "@/lib/prisma";
 import { authenticateRequest, successResponse, errorResponse } from "../../_helpers";
 import { AssessmentItemDto } from "@english-coach/contracts";
 import { assessmentPromptForLevel } from "@/lib/assessment/answer-policy";
+import { getUserSubscriptionStatus } from "@/lib/quotas/subscription-service";
 
 export async function POST(request: Request) {
   try {
     const auth = await authenticateRequest(request);
     if (!auth) {
       return errorResponse("UNAUTHORIZED", "Missing or invalid authorization token", 401);
+    }
+
+    const subStatus = await getUserSubscriptionStatus(auth.userId);
+    if (!subStatus.canAccessAi) {
+      return errorResponse(
+        "TRIAL_EXPIRED",
+        subStatus.reason || "Your 6-day free trial has expired. Please subscribe to continue using AI coaching.",
+        403
+      );
     }
 
     // 1. Check for existing in-progress assessment

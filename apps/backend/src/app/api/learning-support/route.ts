@@ -3,10 +3,20 @@ import { authenticateRequest, errorResponse, successResponse } from "../_helpers
 import { AiTaskRouter } from "@/lib/ai/task-router";
 import { buildLearningSupportRequest } from "@/lib/learning/learning-support-policy";
 import { CefrLevelEnum } from "@english-coach/contracts";
+import { getUserSubscriptionStatus } from "@/lib/quotas/subscription-service";
 
 export async function POST(request: Request) {
   const auth = await authenticateRequest(request);
   if (!auth) return errorResponse("UNAUTHORIZED", "Authentication required", 401);
+
+  const subStatus = await getUserSubscriptionStatus(auth.userId);
+  if (!subStatus.canAccessAi) {
+    return errorResponse(
+      "TRIAL_EXPIRED",
+      subStatus.reason || "Your 6-day free trial has expired. Please subscribe to continue using AI coaching.",
+      403
+    );
+  }
 
   try {
     const body = await request.json();

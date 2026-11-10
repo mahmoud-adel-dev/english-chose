@@ -40,11 +40,39 @@ export class QuotaManager {
     const today = this.getTodayUtc();
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, isActive: true },
+      select: {
+        id: true,
+        isActive: true,
+        createdAt: true,
+        trialEndsAt: true,
+        subscriptionExpiresAt: true,
+        quotaTier: true,
+      },
     });
 
     if (!user || !user.isActive) {
       return { allowed: false, remaining: 0, reason: "User account is suspended or inactive." };
+    }
+
+    // 6-day Free Trial & Active Subscription Enforcement
+    const now = new Date();
+    const isSubscribed =
+      user.quotaTier &&
+      user.quotaTier.name !== "FREE" &&
+      Boolean(user.subscriptionExpiresAt && user.subscriptionExpiresAt > now);
+
+    if (!isSubscribed) {
+      const trialEnd =
+        user.trialEndsAt ??
+        (user.createdAt ? new Date(user.createdAt.getTime() + 6 * 24 * 60 * 60 * 1000) : null);
+      if (trialEnd && now > trialEnd) {
+        return {
+          allowed: false,
+          remaining: 0,
+          reason:
+            "TRIAL_EXPIRED: Your 6-day free trial has expired. Please subscribe to a plan to continue using English Coach AI.",
+        };
+      }
     }
 
     const tier = await resolveUserQuotaTier(userId);

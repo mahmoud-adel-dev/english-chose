@@ -9,31 +9,113 @@ async function main() {
   // 1. Quota Tiers
   const freeTier = await prisma.quotaTier.upsert({
     where: { name: "FREE" },
-    update: {},
+    update: {
+      maxDailyQuestions: 10,
+      maxDailySessions: 1,
+      maxAudioMinutesDay: 5.0,
+      maxAttemptsPerItem: 2,
+      requestsPerMinute: 10,
+      priceMonthlyEgp: 0,
+      priceYearlyEgp: 0,
+      description: "تجربة مجانية لمدة 6 أيام لجميع خدمات المدرب الذكي والتقييم الفوري",
+      badge: "تجربة 6 أيام",
+    },
     create: {
       name: "FREE",
-      maxDailyQuestions: 15,
-      maxDailySessions: 2,
-      maxAudioMinutesDay: 10.0,
+      maxDailyQuestions: 10,
+      maxDailySessions: 1,
+      maxAudioMinutesDay: 5.0,
+      maxAttemptsPerItem: 2,
+      requestsPerMinute: 10,
+      priceMonthlyEgp: 0,
+      priceYearlyEgp: 0,
+      description: "تجربة مجانية لمدة 6 أيام لجميع خدمات المدرب الذكي والتقييم الفوري",
+      badge: "تجربة 6 أيام",
+    }
+  });
+
+  const basicTier = await prisma.quotaTier.upsert({
+    where: { name: "BASIC" },
+    update: {
+      maxDailyQuestions: 25,
+      maxDailySessions: 3,
+      maxAudioMinutesDay: 15.0,
       maxAttemptsPerItem: 3,
-      requestsPerMinute: 20
+      requestsPerMinute: 25,
+      priceMonthlyEgp: 300,
+      priceYearlyEgp: 2880,
+      description: "للمتعلمين المبتدئين والاستخدام اليومي الخفيف وبناء الأساسيات",
+      badge: "الأساسية",
+    },
+    create: {
+      name: "BASIC",
+      maxDailyQuestions: 25,
+      maxDailySessions: 3,
+      maxAudioMinutesDay: 15.0,
+      maxAttemptsPerItem: 3,
+      requestsPerMinute: 25,
+      priceMonthlyEgp: 300,
+      priceYearlyEgp: 2880,
+      description: "للمتعلمين المبتدئين والاستخدام اليومي الخفيف وبناء الأساسيات",
+      badge: "الأساسية",
+    }
+  });
+
+  const proTier = await prisma.quotaTier.upsert({
+    where: { name: "PRO" },
+    update: {
+      maxDailyQuestions: 60,
+      maxDailySessions: 6,
+      maxAudioMinutesDay: 30.0,
+      maxAttemptsPerItem: 5,
+      requestsPerMinute: 40,
+      priceMonthlyEgp: 500,
+      priceYearlyEgp: 4500,
+      description: "الخيار الأفضل للتقدم السريع والممارسة اليومية المكثفة والمحادثة الحية",
+      badge: "الأكثر اختياراً ⭐",
+    },
+    create: {
+      name: "PRO",
+      maxDailyQuestions: 60,
+      maxDailySessions: 6,
+      maxAudioMinutesDay: 30.0,
+      maxAttemptsPerItem: 5,
+      requestsPerMinute: 40,
+      priceMonthlyEgp: 500,
+      priceYearlyEgp: 4500,
+      description: "الخيار الأفضل للتقدم السريع والممارسة اليومية المكثفة والمحادثة الحية",
+      badge: "الأكثر اختياراً ⭐",
     }
   });
 
   const premiumTier = await prisma.quotaTier.upsert({
     where: { name: "PREMIUM" },
-    update: {},
+    update: {
+      maxDailyQuestions: 150,
+      maxDailySessions: 15,
+      maxAudioMinutesDay: 60.0,
+      maxAttemptsPerItem: 10,
+      requestsPerMinute: 60,
+      priceMonthlyEgp: 750,
+      priceYearlyEgp: 6300,
+      description: "للمحترفين والطلاب الراغبين في طلاقة كاملة بدون أي قيود",
+      badge: "VIP بلا حدود",
+    },
     create: {
       name: "PREMIUM",
-      maxDailyQuestions: 100,
-      maxDailySessions: 10,
+      maxDailyQuestions: 150,
+      maxDailySessions: 15,
       maxAudioMinutesDay: 60.0,
-      maxAttemptsPerItem: 5,
-      requestsPerMinute: 60
+      maxAttemptsPerItem: 10,
+      requestsPerMinute: 60,
+      priceMonthlyEgp: 750,
+      priceYearlyEgp: 6300,
+      description: "للمحترفين والطلاب الراغبين في طلاقة كاملة بدون أي قيود",
+      badge: "VIP بلا حدود",
     }
   });
 
-  console.log("✅ Quota tiers seeded (FREE, PREMIUM).");
+  console.log("✅ Quota tiers seeded (FREE, BASIC, PRO, PREMIUM).");
 
   // 2. AI Providers
   // Keep the mock fixture inactive in production. Runtime routing also has an

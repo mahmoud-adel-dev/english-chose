@@ -3,6 +3,7 @@ import { verifyPassword } from "@/lib/auth/password";
 import { assertJwtConfiguration, signToken } from "@/lib/auth/jwt";
 import { LoginRequestSchema, AuthResponseData } from "@english-coach/contracts";
 import { successResponse, errorResponse } from "../../_helpers";
+import { getUserSubscriptionStatus } from "@/lib/quotas/subscription-service";
 
 export async function POST(request: Request) {
   try {
@@ -40,11 +41,14 @@ export async function POST(request: Request) {
       });
     }
 
-    const token = await signToken({
-      userId: user.id,
-      email: user.email,
-      role: user.role,
-    });
+    const [token, subStatus] = await Promise.all([
+      signToken({
+        userId: user.id,
+        email: user.email,
+        role: user.role,
+      }),
+      getUserSubscriptionStatus(user.id),
+    ]);
 
     const authData: AuthResponseData = {
       user: {
@@ -53,6 +57,12 @@ export async function POST(request: Request) {
         name: user.name,
         role: user.role,
         createdAt: user.createdAt.toISOString(),
+        trialEndsAt: subStatus.trialEndsAt.toISOString(),
+        isTrialActive: subStatus.isTrialActive,
+        trialDaysRemaining: subStatus.trialDaysRemaining,
+        subscriptionTier: subStatus.tierName,
+        subscriptionExpiresAt: subStatus.subscriptionExpiresAt?.toISOString() ?? null,
+        isSubscribed: subStatus.isSubscribed,
       },
       profile: {
         userId: profile.userId,

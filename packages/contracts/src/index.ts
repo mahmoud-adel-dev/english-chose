@@ -77,6 +77,12 @@ export interface UserDto {
   name: string;
   role: "STUDENT" | "TEACHER" | "ADMIN" | "SUPER_ADMIN";
   createdAt: string;
+  trialEndsAt?: string | null;
+  isTrialActive?: boolean;
+  trialDaysRemaining?: number;
+  subscriptionTier?: string | null;
+  subscriptionExpiresAt?: string | null;
+  isSubscribed?: boolean;
 }
 
 export interface LearningProfileDto {
@@ -209,6 +215,45 @@ export interface QuotaUsageDto {
   audioMinutesRemaining: number;
   tierName: string;
   resetsAtUtc: string;
+  isTrialActive?: boolean;
+  trialDaysRemaining?: number;
+  trialHoursRemaining?: number;
+  isSubscribed?: boolean;
+  subscriptionExpiresAt?: string | null;
+  canAccessAi?: boolean;
+}
+
+export interface SubscriptionPlanDto {
+  id: string;
+  name: string;
+  badge?: string | null;
+  description?: string | null;
+  priceMonthlyEgp: number;
+  priceYearlyEgp: number;
+  annualSavingsPercent: number;
+  maxDailyQuestions: number;
+  maxDailySessions: number;
+  maxAudioMinutesDay: number;
+  maxAttemptsPerItem: number;
+  requestsPerMinute: number;
+  isCurrent: boolean;
+}
+
+export const SubscribeRequestSchema = z.object({
+  tierName: z.enum(["BASIC", "PRO", "PREMIUM"]),
+  billingCycle: z.enum(["MONTHLY", "YEARLY"]).default("MONTHLY"),
+});
+export type SubscribeRequest = z.infer<typeof SubscribeRequestSchema>;
+
+export interface UserSubscriptionStatusDto {
+  tierName: string;
+  isSubscribed: boolean;
+  subscriptionExpiresAt: string | null;
+  isTrialActive: boolean;
+  trialDaysRemaining: number;
+  trialHoursRemaining: number;
+  trialEndsAt: string | null;
+  canAccessAi: boolean;
 }
 
 export interface AdminUsageAnalyticsDto {

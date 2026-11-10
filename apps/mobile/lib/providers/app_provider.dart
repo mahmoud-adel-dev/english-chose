@@ -22,6 +22,11 @@ class AppProvider with ChangeNotifier {
   Map<String, dynamic>? _lastSessionSummary;
   Map<String, dynamic>? _googleAuthConfig;
 
+  // Subscription & Plans state
+  List<Map<String, dynamic>> _subscriptionPlans = [];
+  Map<String, dynamic>? _userSubscriptionStatus;
+  bool _isTrialExpired = false;
+
   // Learn module state
   List<GrammarTopicModel> _grammarTopics = [];
   List<LearningTipModel> _learningTips = [];
@@ -61,6 +66,17 @@ class AppProvider with ChangeNotifier {
   String? get learningSupportContent => _learningSupportContent;
   Map<String, dynamic>? get lastSessionSummary => _lastSessionSummary;
   Map<String, dynamic>? get googleAuthConfig => _googleAuthConfig;
+  List<Map<String, dynamic>> get subscriptionPlans => _subscriptionPlans;
+  Map<String, dynamic>? get userSubscriptionStatus => _userSubscriptionStatus;
+  bool get isTrialExpired => _isTrialExpired || _quota?['canAccessAi'] == false;
+  int get trialDaysRemaining =>
+      (_quota?['trialDaysRemaining'] as num?)?.toInt() ??
+      _user?.trialDaysRemaining ??
+      6;
+  bool get isSubscribed =>
+      _quota?['isSubscribed'] == true || _user?.isSubscribed == true;
+  String get activeTierName =>
+      _quota?['tierName']?.toString() ?? _user?.subscriptionTier ?? 'FREE';
   bool get isGoogleLoginEnabled =>
       _googleAuthConfig?['enabled'] == true &&
       isUsableGoogleClientId(_googleAuthConfig?['webClientId']?.toString());
@@ -281,8 +297,55 @@ class AppProvider with ChangeNotifier {
     try {
       final data = await ApiService.get(ApiConfig.quota);
       _quota = data as Map<String, dynamic>;
+      if (_quota?['canAccessAi'] == false) {
+        _isTrialExpired = true;
+      }
       notifyListeners();
     } catch (_) {}
+  }
+
+  Future<void> fetchSubscriptionPlans() async {
+    try {
+      final data = await ApiService.get(ApiConfig.subscriptionPlans);
+      if (data is Map<String, dynamic>) {
+        _subscriptionPlans =
+            List<Map<String, dynamic>>.from(data['plans'] ?? []);
+        if (data['userStatus'] != null) {
+          _userSubscriptionStatus =
+              Map<String, dynamic>.from(data['userStatus']);
+          if (_userSubscriptionStatus?['canAccessAi'] == false) {
+            _isTrialExpired = true;
+          }
+        }
+      }
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  Future<bool> subscribeToPlan(
+    String tierName, {
+    String billingCycle = 'MONTHLY',
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      await ApiService.post(
+        ApiConfig.subscriptionSubscribe,
+        body: {'tierName': tierName, 'billingCycle': billingCycle},
+      );
+      _isTrialExpired = false;
+      await fetchQuota();
+      await fetchSubscriptionPlans();
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
   }
 
   Future<void> refreshProfile() async {
@@ -333,6 +396,12 @@ class AppProvider with ChangeNotifier {
       if (e is ApiException && e.code == 'QUOTA_EXCEEDED') {
         await fetchQuota();
         _errorMessage = null;
+      } else if (e is ApiException &&
+          (e.code == 'TRIAL_EXPIRED' || e.message.contains('TRIAL_EXPIRED'))) {
+        _isTrialExpired = true;
+        await fetchQuota();
+        _errorMessage =
+            'Your 6-day free trial has expired. Please choose a subscription plan to continue.';
       } else {
         _errorMessage = e.toString();
       }

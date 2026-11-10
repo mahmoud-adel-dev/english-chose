@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { AiTaskRouter } from "@/lib/ai/task-router";
 import { AiTaskType } from "@prisma/client";
 import { authenticateRequest, successResponse, errorResponse } from "../../../_helpers";
+import { getUserSubscriptionStatus } from "@/lib/quotas/subscription-service";
 
 export async function POST(
   request: Request,
@@ -11,6 +12,15 @@ export async function POST(
     const auth = await authenticateRequest(request);
     if (!auth) {
       return errorResponse("UNAUTHORIZED", "Missing or invalid authorization token", 401);
+    }
+
+    const subStatus = await getUserSubscriptionStatus(auth.userId);
+    if (!subStatus.canAccessAi) {
+      return errorResponse(
+        "TRIAL_EXPIRED",
+        subStatus.reason || "Your 6-day free trial has expired. Please subscribe to continue using AI coaching.",
+        403
+      );
     }
 
     const { sessionId } = await params;

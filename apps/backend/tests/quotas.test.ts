@@ -6,15 +6,17 @@ describe("Quota Manager & Concurrency-Safe Enforcement", () => {
   let testUserId: string;
 
   beforeAll(async () => {
-    // Create or find a test student user
+    // Create or find a test student user with an active trial
+    const trialEndsAt = new Date(Date.now() + 6 * 24 * 60 * 60 * 1000);
     const user = await prisma.user.upsert({
       where: { email: "quota_test@englishcoach.app" },
-      update: {},
+      update: { trialEndsAt },
       create: {
         email: "quota_test@englishcoach.app",
         name: "Quota Test User",
         passwordHash: "hash",
         role: "STUDENT",
+        trialEndsAt,
       },
     });
     testUserId = user.id;
@@ -46,5 +48,26 @@ describe("Quota Manager & Concurrency-Safe Enforcement", () => {
     const largeConsume = await QuotaManager.checkAndConsume(testUserId, "QUESTION", 25);
     expect(largeConsume.allowed).toBe(false);
     expect(largeConsume.reason).toContain("Daily question quota exceeded");
+  }, 15_000);
+
+  it("blocks requests when the 6-day free trial has expired", async () => {
+    const expiredUser = await prisma.user.upsert({
+      where: { email: "expired_trial@englishcoach.app" },
+      update: {
+        trialEndsAt: new Date(Date.now() - 24 * 60 * 60 * 1000), // expired yesterday
+        quotaTierId: null,
+      },
+      create: {
+        email: "expired_trial@englishcoach.app",
+        name: "Expired Trial User",
+        passwordHash: "hash",
+        role: "STUDENT",
+        trialEndsAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
+      },
+    });
+
+    const res = await QuotaManager.checkAndConsume(expiredUser.id, "QUESTION", 1);
+    expect(res.allowed).toBe(false);
+    expect(res.reason).toContain("TRIAL_EXPIRED");
   }, 15_000);
 });

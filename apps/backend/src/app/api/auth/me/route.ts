@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { authenticateRequest, successResponse, errorResponse } from "../../_helpers";
 import { AuthResponseData } from "@english-coach/contracts";
+import { getUserSubscriptionStatus } from "@/lib/quotas/subscription-service";
 
 export async function GET(request: Request) {
   try {
@@ -9,10 +10,13 @@ export async function GET(request: Request) {
       return errorResponse("UNAUTHORIZED", "Missing or invalid authorization token", 401);
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: auth.userId },
-      include: { profile: true },
-    });
+    const [user, subStatus] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: auth.userId },
+        include: { profile: true },
+      }),
+      getUserSubscriptionStatus(auth.userId),
+    ]);
 
     if (!user || !user.isActive) {
       return errorResponse("NOT_FOUND", "User not found or inactive", 404);
@@ -39,6 +43,12 @@ export async function GET(request: Request) {
         name: user.name,
         role: user.role,
         createdAt: user.createdAt.toISOString(),
+        trialEndsAt: subStatus.trialEndsAt.toISOString(),
+        isTrialActive: subStatus.isTrialActive,
+        trialDaysRemaining: subStatus.trialDaysRemaining,
+        subscriptionTier: subStatus.tierName,
+        subscriptionExpiresAt: subStatus.subscriptionExpiresAt?.toISOString() ?? null,
+        isSubscribed: subStatus.isSubscribed,
       },
       profile: {
         userId: profile.userId,

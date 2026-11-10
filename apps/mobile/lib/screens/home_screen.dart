@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../config/theme.dart';
 import '../providers/app_provider.dart';
 import '../widgets/coach_illustration.dart';
+import 'subscription_plans_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   final VoidCallback onStartPractice, onStartAssessment;
@@ -54,6 +55,21 @@ class HomeScreen extends StatelessWidget {
           ],
         ),
         actions: [
+          IconButton(
+            tooltip: 'خطط وباقات الاشتراك',
+            icon: const Icon(
+              Icons.workspace_premium_outlined,
+              color: AppTheme.primaryColor,
+              size: 23,
+            ),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const SubscriptionPlansScreen(),
+                ),
+              );
+            },
+          ),
           if (provider.isAdmin && onOpenAdmin != null)
             IconButton(
               tooltip: 'Admin Panel',
@@ -136,6 +152,78 @@ class HomeScreen extends StatelessWidget {
                       ),
                     ],
                   ),
+                  if (provider.isTrialExpired) ...[
+                    const SizedBox(height: 18),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFF3F2),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: const Color(0xFFFECACA)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.hourglass_disabled_rounded,
+                            color: Color(0xFFD92D20),
+                            size: 26,
+                          ),
+                          const SizedBox(width: 12),
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'انتهت التجربة المجانية (6 أيام)',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 13,
+                                    color: Color(0xFFB42318),
+                                  ),
+                                ),
+                                SizedBox(height: 2),
+                                Text(
+                                  'اشترك الآن للاستمرار في التدريب والتقييم بالذكاء الاصطناعي.',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Color(0xFF912018),
+                                    height: 1.3,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          ElevatedButton(
+                            onPressed: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => const SubscriptionPlansScreen(),
+                                ),
+                              );
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFD92D20),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 10,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: const Text(
+                              'اشترك الآن',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 24),
                   Container(
                     padding: const EdgeInsets.all(22),
@@ -241,16 +329,29 @@ class HomeScreen extends StatelessWidget {
                             ),
                           ),
                         if (tier != null && tier.isNotEmpty)
-                          Chip(
+                          ActionChip(
                             avatar: const Icon(
                               Icons.verified_outlined,
                               size: 15,
                               color: AppTheme.accentColor,
                             ),
                             label: Text(
-                              '$tier plan',
-                              style: const TextStyle(fontSize: 10),
+                              tier == 'FREE'
+                                  ? 'تجربة 6 أيام (${provider.trialDaysRemaining} متبقي) · ترقية'
+                                  : '$tier plan',
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
+                            onPressed: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      const SubscriptionPlansScreen(),
+                                ),
+                              );
+                            },
                           ),
                       ],
                     ),
