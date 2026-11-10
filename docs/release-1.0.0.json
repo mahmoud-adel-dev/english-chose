@@ -1,6 +1,6 @@
 {
-  "version": "1.0.0",
-  "version_code": 1,
+  "version": "1.0.1",
+  "version_code": 2,
   "package": "com.englishcoach.mobile",
   "android_min_api": 24,
   "android_target_api": 36,
@@ -8,12 +8,11 @@
     "arm64-v8a",
     "armeabi-v7a"
   ],
-  "size_bytes": 36924306,
-  "sha256": "91869fb1597b2a56965ca842af4f2ba3f6d0ad2a50407873eb144accde11857c",
-  "certificate_sha256": "2e9edeb6ebcb7931a52e6b1ea4cf9e0b7b4ac07f73d2f01139ad6bf81e5a465c",
-  "certificate_sha1": "1b9882bff46920519be1554053fe5e157ac46979",
+  "size_bytes": 36945226,
+  "certificate_sha256": "acc0c8a1f49f485a6ded247a07c9cc21ae600ea70db8c4ec4bcfd4bc117e3941",
+  "certificate_sha1": "8b876656a4649907c50acb86bc08ecd138f39463",
   "signature_scheme": "v2",
   "flutter": "3.44.9",
   "dart": "3.12.2",
-  "physical_device_tested": false
+  "physical_device_tested": true
 }
