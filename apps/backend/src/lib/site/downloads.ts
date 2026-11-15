@@ -8,7 +8,7 @@ function httpsUrl(value: string | undefined): string | null {
   } catch { return null; }
 }
 
-export function getDownloads(env: DownloadEnvironment, bundledAndroidExists = false) {
+export function getDownloads(env: DownloadEnvironment, bundledAndroidExists = false, bundledPath = "/downloads/english-coach.apk") {
   const iosUrl = httpsUrl(env.IOS_DOWNLOAD_URL);
   let ios: string | null = null;
   if (iosUrl) {
@@ -19,7 +19,7 @@ export function getDownloads(env: DownloadEnvironment, bundledAndroidExists = fa
     }
   }
   return {
-    android: httpsUrl(env.ANDROID_DOWNLOAD_URL) ?? (bundledAndroidExists ? "/downloads/english-coach.apk" : null),
+    android: httpsUrl(env.ANDROID_DOWNLOAD_URL) ?? (bundledAndroidExists ? bundledPath : null),
     ios,
   };
 }

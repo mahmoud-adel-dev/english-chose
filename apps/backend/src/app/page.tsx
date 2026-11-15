@@ -12,13 +12,17 @@ function Mark({ small = false }: { small?: boolean }) {
 function Arrow() { return <span aria-hidden="true">←</span>; }
 function DownloadButtons({ android, ios }: { android: string | null; ios: string | null }) {
   return <div className="download-buttons">
-    {android ? <a className="button primary" href={android} download={android.startsWith("/") ? "English-Coach-Android.apk" : undefined}><svg aria-hidden="true" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m-5-5 5 5 5-5M5 16v4h14v-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg><span>حمّل نسخة Android<small>ملف APK للتثبيت المباشر</small></span></a> : <span className="button unavailable">نسخة Android قيد التجهيز</span>}
+    {android ? <a className="button primary" href={android} download="English-Coach-V2.apk"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m-5-5 5 5 5-5M5 16v4h14v-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg><span>حمّل نسخة Android (V2 المحدثة)<small>ملف APK للتثبيت المباشر · تحديث الباقات</small></span></a> : <span className="button unavailable">نسخة Android قيد التجهيز</span>}
     {ios ? <a className="button secondary" href={ios} rel="noopener noreferrer">تحميل iOS <Arrow/></a> : <span className="button secondary unavailable" aria-disabled="true"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none"><rect x="5" y="2" width="14" height="20" rx="3" stroke="currentColor" strokeWidth="1.6"/><path d="M10 5h4m-3 14h2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg><span>نسخة iOS<small>قريبًا</small></span></span>}
   </div>;
 }
 
 export default function LandingPage() {
-  const downloads = getDownloads({ ANDROID_DOWNLOAD_URL: process.env.ANDROID_DOWNLOAD_URL, IOS_DOWNLOAD_URL: process.env.IOS_DOWNLOAD_URL }, existsSync(path.join(process.cwd(), "public/downloads/english-coach.apk")));
+  const hasV2 = existsSync(path.join(process.cwd(), "public/downloads/english-coach-v2.apk"));
+  const hasOld = existsSync(path.join(process.cwd(), "public/downloads/english-coach.apk"));
+  const bundledExists = hasV2 || hasOld;
+  const bundledPath = hasV2 ? "/downloads/english-coach-v2.apk" : "/downloads/english-coach.apk";
+  const downloads = getDownloads({ ANDROID_DOWNLOAD_URL: process.env.ANDROID_DOWNLOAD_URL, IOS_DOWNLOAD_URL: process.env.IOS_DOWNLOAD_URL }, bundledExists, bundledPath);
   return <>
     <header className="site-header wrap">
       <a className="brand" href="#" aria-label="English Coach الرئيسية"><Mark/><span dir="ltr">English<span className="brand-light"> Coach</span><small>YOUR SPACE TO GROW</small></span></a>
@@ -54,7 +58,7 @@ export default function LandingPage() {
         <details><summary>إزاي أثبّت نسخة Android؟</summary><p>حمّل ملف APK من الزر، وافتحه على هاتف Android. لو طلب الهاتف السماح بالتثبيت من المتصفح، راجع المصدر واسمح بالتثبيت للملف اللي حمّلته من الموقع.</p></details>
         <details><summary>هل فيه تقييم للنطق أو نسخة iPhone؟</summary><p>التقييم الحالي بيعتمد على نص إجابتك، ومش قياس صوتي لدقة النطق. {downloads.ios ? "نسخة iOS متاحة عبر رابط التوزيع الموجود في الصفحة." : "نسخة iOS هتظهر هنا لما رابط توزيعها يبقى متاح."}</p></details>
       </div></section>
-      <section className="download-section wrap" id="download"><span className="section-kicker">البداية مش لازم تكون كبيرة</span><h2>مكانك هنا.<br/><span>وأول خطوة بإيدك.</span></h2><p>خلي English Coach جزء صغير من يومك.</p><DownloadButtons {...downloads}/><p className="download-footnote">Android · إصدار أول 1.0.0 &nbsp; / &nbsp; iOS · {downloads.ios ? "متاح عبر رابط التوزيع" : "قريبًا"}</p></section>
+      <section className="download-section wrap" id="download"><span className="section-kicker">البداية مش لازم تكون كبيرة</span><h2>مكانك هنا.<br/><span>وأول خطوة بإيدك.</span></h2><p>خلي English Coach جزء صغير من يومك.</p><DownloadButtons {...downloads}/><p className="download-footnote">Android · إصدار V2 المحدث 1.0.2 &nbsp; / &nbsp; iOS · {downloads.ios ? "متاح عبر رابط التوزيع" : "قريبًا"}</p></section>
     </main>
     <footer className="site-footer wrap"><a className="brand" href="#"><Mark small/><span dir="ltr">English Coach</span></a><span>تعلّم خطوة بخطوة، وبطريقتك.</span><span dir="ltr">© {new Date().getFullYear()} English Coach</span></footer>
   </>;

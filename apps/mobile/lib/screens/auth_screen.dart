@@ -229,7 +229,7 @@ class _AuthScreenState extends State<AuthScreen> {
         CoachIllustration(size: 185),
         SizedBox(height: 4),
         Text(
-          'English Coach AI',
+          'English Coach AI V2',
           style: TextStyle(
             fontSize: 25,
             fontWeight: FontWeight.w800,
