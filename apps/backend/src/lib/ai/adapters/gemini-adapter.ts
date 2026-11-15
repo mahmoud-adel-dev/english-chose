@@ -36,7 +36,7 @@ export class GeminiAiProviderAdapter implements IAiProviderAdapter {
     const startTime = Date.now();
     const ai = this.getClient();
     const generativeModel = ai.getGenerativeModel({
-      model: model || "gemini-flash-latest",
+      model: model || "gemini-3.5-flash",
       generationConfig: {
         temperature: req.temperature ?? 0.3,
         maxOutputTokens: req.maxTokens ?? 2048,
@@ -79,7 +79,7 @@ export class GeminiAiProviderAdapter implements IAiProviderAdapter {
     const startTime = Date.now();
     const ai = this.getClient();
     const generativeModel = ai.getGenerativeModel({
-      model: model || "gemini-flash-latest",
+      model: model || "gemini-3.5-flash",
       generationConfig: {
         temperature: 0.0,
       },

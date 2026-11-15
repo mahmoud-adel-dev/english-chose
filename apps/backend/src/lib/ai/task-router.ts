@@ -222,7 +222,13 @@ export class AiTaskRouter {
     // 4. Built-in Server Environment Gemini Fallback
     const envGeminiKey = process.env.GEMINI_API_KEY;
     if (envGeminiKey) {
-      const workingModels = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
+      const workingModels = [
+        "gemini-3.5-flash",
+        "gemini-flash-latest",
+        "gemini-3.5-flash-lite",
+        "gemini-3.8-flash",
+        "gemini-2.5-flash",
+      ];
       const geminiAdapter = new GeminiAiProviderAdapter(envGeminiKey);
       for (const modelId of workingModels) {
         try {
